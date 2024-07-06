@@ -1,4 +1,4 @@
-# установить Pythhon в зависимости от ОС
+# установить Pythhon в зависимости от ОС + виртуальное окружение
 
 
 # Running FAST API
@@ -8,4 +8,4 @@
 
 # Running ngrok
     https://ngrok.com/download скачать и установить
-    ngrok http 8000 для запуска ngrok
+    при запущенном FAST API - в отдельном терминале ввести команду *ngrok http 8000* для запуска ngrok
