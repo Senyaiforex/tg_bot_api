@@ -9,3 +9,4 @@
 # Running ngrok
     https://ngrok.com/download скачать и установить
     при запущенном FAST API - в отдельном терминале ввести команду *ngrok http 8000* для запуска ngrok
+    8000 - порт, на котором запущен FAST API
