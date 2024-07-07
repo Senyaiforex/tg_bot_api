@@ -1,7 +1,7 @@
 from fastapi import HTTPException
-from api import models
+import models
 from sqlalchemy.future import select
-from api.database import async_session
+from database import async_session
 import schemes
 
 
