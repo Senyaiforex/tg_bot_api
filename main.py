@@ -35,24 +35,11 @@ app.add_middleware(
         allow_methods=["*"],  # Разрешить все методы (GET, POST, PUT, DELETE и т.д.)
         allow_headers=["*"],  # Разрешить все заголовки
 )
-# API_KEY нужен для того, чтобы доступ к API имел только тот клиент, который в
-# параметре запроса указывает нужный api_key
-# API_KEY = "ars"
 
 
 async def get_async_session() -> AsyncSession:
     async with async_session() as session:
         yield session
-
-
-# def get_api_key(api_key: str = Header(..., alias='api_key')):
-#     """
-#     Функция для проверки соответствия ключа API, передаваемого в заголовке
-#     :param api_key: API ключ, передаваемый в заголовке
-#     :return: None
-#     """
-#     if api_key != API_KEY:
-#         raise HTTPException(status_code=403, detail="Invalid API Key")
 
 
 @app.get("/api/get_user_info/{id_telegram}")
@@ -68,7 +55,6 @@ async def get_user(id_telegram: int = Path(..., title='ID пользовател
         ◦ Пример:\n
         ◦ { "id_telegram": 123456, "user_name": "example_user", "count_token": 0, "count_pharmd": 65000 }\n
     """
-    # get_api_key(api_key)
     user = await get_user_by_telegram_id(id_telegram, session)
     user_data = schemes.CreateUser.from_orm(user)
     tg_id = user_data.id_telegram
@@ -76,7 +62,8 @@ async def get_user(id_telegram: int = Path(..., title='ID пользовател
     count_token = user_data.count_token
     count_pharmd = user_data.count_pharmd
     return JSONResponse(content={'id_telegram': f'{tg_id}', 'user_name': f'{user_name}',
-                                 'count_token': f'{count_token}', 'count_pharmd': f'{count_pharmd}'})
+                                 'count_token': f'{count_token}', 'count_pharmd': f'{count_pharmd}'},
+                        headers={'Content-Type': 'application/json'})
 
 
 @app.get("/api/get_count_tokens/{id_telegram}")
@@ -92,9 +79,8 @@ async def get_tokens(id_telegram: int = Path(..., title='ID пользовате
         ◦ Пример:\n
         ◦ { "count_tokens": 100 }
     """
-    # get_api_key(api_key)
     user = await get_user_by_telegram_id(id_telegram, session)
-    return JSONResponse(content={'count_tokens': f'{user.count_tokens}'})
+    return JSONResponse(content={'count_tokens': f'{user.count_tokens}'}, headers={'Content-Type': 'application/json'})
 
 
 @app.get("/api/get_count_pharmd/{id_telegram}")
@@ -110,9 +96,8 @@ async def get_pharmd(id_telegram: int = Path(..., title='ID пользовате
         ◦ Пример:\n
         ◦ { "count_pharmd": 65000 }
     """
-    # get_api_key(api_key)
     user = await get_user_by_telegram_id(id_telegram, session)
-    return JSONResponse(content={'count_pharmd': f'{user.count_pharmd}'})
+    return JSONResponse(content={'count_pharmd': f'{user.count_pharmd}'}, headers={'Content-Type': 'application/json'})
 
 
 @app.post('/api/create_user')
@@ -128,9 +113,15 @@ async def create_user(user: schemes.CreateUser,
         ◦ Пример:\n
         ◦ { "id_telegram": 123456, "user_name": "new_user", "count_token": 0, "count_pharmd": 65000 }\n
     """
-    # get_api_key(api_key)
+
     new_user = await base_create_user(user, session)
-    return JSONResponse(new_user.dict())
+    user_dict = {
+            "id_telegram": new_user.id_telegram,
+            "user_name": new_user.user_name,
+            "count_token": new_user.count_tokens,
+            "count_pharmd": new_user.count_pharmd
+    }
+    return JSONResponse(user_dict)
 
 
 @app.patch('/api/change_token')
@@ -145,7 +136,6 @@ async def change_token(data_new: schemes.ChangeToken,
         ◦ 200 OK: JSON объект, содержащий обновленную информацию о токенах пользователя.\n
         ◦ Пример: { "id_telegram": 123456, "count_tokens": 150 }
     """
-    # get_api_key(api_key)
     user = await change_tokens_by_id(data_new.id_telegram, data_new.amount, data_new.add, session)
     return JSONResponse(content={'id_telegram': f'{user.id_telegram}', 'count_tokens': f'{user.count_tokens}'})
 
@@ -163,7 +153,6 @@ async def change_pharmd(data_new: schemes.ChangeToken,
         ◦ Пример:\n
         ◦ { "id_telegram": 123456, "count_pharmd": 70000 }\n
     """
-    # get_api_key(api_key)
     user = await change_pharmd_by_id(data_new.id_telegram, data_new.amount, data_new.add, session)
     return JSONResponse(content={'id_telegram': f'{user.id_telegram}', 'count_pharmd': f'{user.count_pharmd}'})
 
@@ -182,7 +171,6 @@ async def delete_user(user: schemes.DeleteUser,
         ◦ { "detail": "User deleted" }
 
     """
-    # get_api_key(api_key)
     user = await get_user_by_telegram_id(user.id_telegram, session)
     await session.delete(user)
     await session.commit()
