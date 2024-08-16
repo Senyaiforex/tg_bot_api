@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from repository import *
 from sqlalchemy.ext.asyncio import AsyncSession
 from database import engine, async_session
-
+import uvicorn
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -175,3 +175,13 @@ async def delete_user(user: schemes.DeleteUser,
     await session.delete(user)
     await session.commit()
     return JSONResponse(content={"detail": "User deleted"})
+
+
+def main():
+    config = uvicorn.Config(app, host='127.0.0.1', port=8000, log_level="info")
+    server = uvicorn.Server(config)
+    server.run()
+
+
+if __name__ == '__main__':
+    main()

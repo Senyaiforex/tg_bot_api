@@ -1,4 +1,6 @@
+from email.policy import default
 from typing import Optional
+from datetime import datetime
 
 from pydantic import BaseModel, Field
 
@@ -20,6 +22,25 @@ class CreateUser(BaseModel):
             default=65_000,
             title='Количество фарма у пользователя'
     )
+    level: int = Field(
+            default=0,
+            title='Уровень'
+    )
+    count_invited_friends: int = Field(
+            default=0,
+            title='Количество приглашенных пользователей'
+    )
+    purchase_count: int = Field(
+            default=0,
+            title='Количество покупок'
+    )
+    sale_count: int = Field(
+            default=0,
+            title='Количество продаж'
+    )
+    registration_date: datetime = Field(
+            title='Дата регистрации'
+    )
 
     class Config:
         from_attributes = True
@@ -36,5 +57,24 @@ class ChangePharmd(BaseModel):
     amount: int
     add: bool
 
+
 class DeleteUser(BaseModel):
     id_telegram: int
+
+class ChangeLevel(BaseModel):
+    id_telegram: int
+    amount: int
+    add: bool
+
+class ChangePurchase(BaseModel):
+    id_telegram: int
+    amount: int
+
+class ChangeSale(BaseModel):
+    id_telegram: int
+    amount: int
+
+class ChangeCountFriends(BaseModel):
+    id_telegram: int
+    amount: int
+    add: bool
