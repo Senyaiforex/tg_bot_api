@@ -19,7 +19,7 @@ async def get_user_by_telegram_id(telegram_id: int, session: async_session):
     return user
 
 
-async def base_create_user(user: schemes.CreateUser, session: async_session):
+async def base_create_user(user: schemes.UserIn, session: async_session):
     """
     Функция для создания нового пользователя в базе данных
     :param user:
@@ -32,7 +32,7 @@ async def base_create_user(user: schemes.CreateUser, session: async_session):
             count_tokens=user.count_token,
             count_pharmd=user.count_pharmd
     )
-    result = await session.execute(select(models.User).\
+    result = await session.execute(select(models.User). \
                                    where(models.User.id_telegram == new_user.id_telegram))
     user = result.scalars().first()
     if user:
@@ -94,3 +94,27 @@ async def change_pharmd_by_id(
         user.count_pharmd -= amount
     await session.commit()
     return user
+
+
+async def create_user_tg(id_telegram: int, username: str, session: async_session) -> None:
+    """
+    Функция для создания нового пользователя в базе данных из телеграмма.
+    :param id_telegram: id_telegram пользователя
+    :param username: username пользователя
+    :param session:
+    :return:
+    """
+    new_user = models.User(
+            id_telegram=id_telegram,
+            user_name=username,
+    )
+    result = await session.execute(select(models.User). \
+                                   where(models.User.id_telegram == new_user.id_telegram))
+    user = result.scalars().first()
+    if user:
+        return
+    else:
+        session.add(new_user)
+        await session.commit()
+        await session.refresh(new_user)
+

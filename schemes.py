@@ -1,50 +1,65 @@
 from email.policy import default
-from typing import Optional
-from datetime import datetime
+from typing import Optional, List
+from datetime import date
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, HttpUrl
 
-
-class CreateUser(BaseModel):
+class BaseUser(BaseModel):
     id_telegram: int = Field(
             ...,
-            title='ID пользователя телеграм'
+            description='ID пользователя телеграм',
+            gt=0
     )
     user_name: str = Field(
             ...,
-            title='Никнейм пользователя'
+            description='Никнейм пользователя'
     )
     count_token: str = Field(
             default=0,
-            title='Количество токенов у пользователя'
+            description='Количество токенов у пользователя'
     )
     count_pharmd: int = Field(
             default=65_000,
-            title='Количество фарма у пользователя'
+            description='Количество фарма у пользователя'
     )
     level: int = Field(
             default=0,
-            title='Уровень'
+            description='Уровень'
     )
     count_invited_friends: int = Field(
             default=0,
-            title='Количество приглашенных пользователей'
+            description='Количество приглашенных пользователей'
     )
     purchase_count: int = Field(
             default=0,
-            title='Количество покупок'
+            description='Количество покупок'
     )
     sale_count: int = Field(
             default=0,
-            title='Количество продаж'
+            description='Количество продаж'
     )
-    registration_date: datetime = Field(
-            title='Дата регистрации'
+    registration_date: date = Field(
+            description='Дата регистрации',
     )
+    # tasks: Optional[List[int]] = Field(default=None, description='Задачи пользователя')
+    # friends: Optional[List[int]] = Field(default=None, description='Друзья пользователя')
+class UserIn(BaseUser):
+    ...
 
+class UserOut(BaseUser):
     class Config:
-        from_attributes = True
+        from_orm = True
 
+
+
+
+class Task(BaseModel):
+    id: int = Field(default=..., description='ID задачи')
+    description: str = Field(default=..., description='Описание задачи')
+
+class Friends(BaseModel):
+    friend1_id: int = Field(default=..., description='ID первого друга')
+    friend2_id: int = Field(default=..., description='ID второго друга')
 
 class ChangeToken(BaseModel):
     id_telegram: int
@@ -61,18 +76,22 @@ class ChangePharmd(BaseModel):
 class DeleteUser(BaseModel):
     id_telegram: int
 
+
 class ChangeLevel(BaseModel):
     id_telegram: int
     amount: int
     add: bool
 
+
 class ChangePurchase(BaseModel):
     id_telegram: int
     amount: int
 
+
 class ChangeSale(BaseModel):
     id_telegram: int
     amount: int
+
 
 class ChangeCountFriends(BaseModel):
     id_telegram: int

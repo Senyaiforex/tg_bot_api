@@ -1,13 +1,14 @@
 from contextlib import asynccontextmanager
-
 from fastapi import FastAPI, Depends, Request
-from fastapi.params import Path, Header
+from fastapi.params import Path, Header, Query, Annotated
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from repository import *
+import uvicorn
 from sqlalchemy.ext.asyncio import AsyncSession
 from database import engine, async_session
-import uvicorn
+from schemes import UserIn, UserOut
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -17,7 +18,7 @@ async def lifespan(app: FastAPI):
     await engine.dispose()
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, title="Hamster Bot API")
 
 
 @app.exception_handler(Exception)
@@ -42,78 +43,59 @@ async def get_async_session() -> AsyncSession:
         yield session
 
 
-@app.get("/api/get_user_info/{id_telegram}")
-async def get_user(id_telegram: int = Path(..., title='ID пользователя телеграм'),
+@app.get("/api/get_user_info/{id_telegram}", response_model=UserOut)
+async def get_user(id_telegram: Annotated[int, Path(description="Telegram ID пользователя", gt=0)],
                    session=Depends(get_async_session)):
     """
     • Описание: Возвращает информацию о пользователе.\n
     • Параметры:\n
         ◦ id_telegram (параметр пути, int): Telegram ID пользователя.\n
-        ◦ api_key (заголовок, str): API ключ для аутентификации.\n
     • Ответ:\n
-        ◦ 200 OK: JSON объект, содержащий информацию о пользователе (id_telegram, user_name, count_token, count_pharmd).\n
-        ◦ Пример:\n
-        ◦ { "id_telegram": 123456, "user_name": "example_user", "count_token": 0, "count_pharmd": 65000 }\n
+        ◦ 200 OK: JSON объект, содержащий информацию о пользователе.\n
     """
     user = await get_user_by_telegram_id(id_telegram, session)
-    user_data = schemes.CreateUser.from_orm(user)
-    tg_id = user_data.id_telegram
-    user_name = user_data.user_name
-    count_token = user_data.count_token
-    count_pharmd = user_data.count_pharmd
-    return JSONResponse(content={'id_telegram': f'{tg_id}', 'user_name': f'{user_name}',
-                                 'count_token': f'{count_token}', 'count_pharmd': f'{count_pharmd}'},
-                        headers={'Content-Type': 'application/json'})
+    return user
 
 
 @app.get("/api/get_count_tokens/{id_telegram}")
-async def get_tokens(id_telegram: int = Path(..., title='ID пользователя телеграм'),
+async def get_tokens(id_telegram: Annotated[int, Path(description="Telegram ID пользователя", gt=0)],
                      session=Depends(get_async_session)):
     """
     • Описание: Возвращает количество токенов у пользователя.\n
     • Параметры:\n
         ◦ id_telegram (параметр пути, int): Telegram ID пользователя.\n
-        ◦ api_key (заголовок, str): API ключ для аутентификации.\n
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий количество токенов.\n
-        ◦ Пример:\n
-        ◦ { "count_tokens": 100 }
     """
     user = await get_user_by_telegram_id(id_telegram, session)
-    return JSONResponse(content={'count_tokens': f'{user.count_tokens}'}, headers={'Content-Type': 'application/json'})
+    return JSONResponse(content={'count_tokens': f'{user.count_tokens}'},
+                        headers={'Content-Type': 'application/json'})
 
 
 @app.get("/api/get_count_pharmd/{id_telegram}")
-async def get_pharmd(id_telegram: int = Path(..., title='ID пользователя телеграм'),
+async def get_pharmd(id_telegram: Annotated[int, Path(description="Telegram ID пользователя", gt=0)],
                      session=Depends(get_async_session)):
     """
     • Описание: Возвращает количество фарма у пользователя.\n
     • Параметры:\n
         ◦ id_telegram (параметр пути, int): Telegram ID пользователя.\n
-        ◦ api_key (заголовок, str): API ключ для аутентификации.\n
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий количество фарма.\n
-        ◦ Пример:\n
-        ◦ { "count_pharmd": 65000 }
     """
     user = await get_user_by_telegram_id(id_telegram, session)
     return JSONResponse(content={'count_pharmd': f'{user.count_pharmd}'}, headers={'Content-Type': 'application/json'})
 
 
-@app.post('/api/create_user')
-async def create_user(user: schemes.CreateUser,
+@app.post('/api/create_user', response_model=UserOut)
+async def create_user(user: UserIn,
                       session: AsyncSession = Depends(get_async_session)):
     """
     • Описание: Создает нового пользователя в базе данных.\n
     • Параметры:\n
-        ◦ user (тело запроса, схема CreateUser): Данные пользователя.\n
-        ◦ api_key (заголовок, str): API ключ для аутентификации.\n
+        ◦ user (тело запроса, схема User): Данные пользователя.\n
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий информацию о созданном пользователе.\n
-        ◦ Пример:\n
-        ◦ { "id_telegram": 123456, "user_name": "new_user", "count_token": 0, "count_pharmd": 65000 }\n
     """
-
     new_user = await base_create_user(user, session)
     user_dict = {
             "id_telegram": new_user.id_telegram,
@@ -131,10 +113,8 @@ async def change_token(data_new: schemes.ChangeToken,
     • Описание: Изменяет количество токенов у пользователя.\n
     • Параметры:\n
         ◦ data_new (тело запроса, схема ChangeToken): Данные для изменения токенов.\n
-        ◦ api_key (заголовок, str): API ключ для аутентификации.\n
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий обновленную информацию о токенах пользователя.\n
-        ◦ Пример: { "id_telegram": 123456, "count_tokens": 150 }
     """
     user = await change_tokens_by_id(data_new.id_telegram, data_new.amount, data_new.add, session)
     return JSONResponse(content={'id_telegram': f'{user.id_telegram}', 'count_tokens': f'{user.count_tokens}'})
@@ -147,11 +127,8 @@ async def change_pharmd(data_new: schemes.ChangeToken,
     • Описание: Изменяет количество фарма у пользователя.\n
     • Параметры:\n
         ◦ data_new (тело запроса, схема ChangeToken): Данные для изменения фарма.\n
-        ◦ api_key (заголовок, str): API ключ для аутентификации.\n
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий обновленную информацию о фарме пользователя.\n
-        ◦ Пример:\n
-        ◦ { "id_telegram": 123456, "count_pharmd": 70000 }\n
     """
     user = await change_pharmd_by_id(data_new.id_telegram, data_new.amount, data_new.add, session)
     return JSONResponse(content={'id_telegram': f'{user.id_telegram}', 'count_pharmd': f'{user.count_pharmd}'})
@@ -164,11 +141,8 @@ async def delete_user(user: schemes.DeleteUser,
     • Описание: Удаляет пользователя из базы данных.\n
     • Параметры:\n
         ◦ user (тело запроса, схема DeleteUser): Данные пользователя для удаления.\n
-        ◦ api_key (заголовок, str): API ключ для аутентификации.\n
     • Ответ:\n
         ◦ 200 OK: JSON объект, указывающий на успешное удаление.\n
-        ◦ Пример:\n
-        ◦ { "detail": "User deleted" }
 
     """
     user = await get_user_by_telegram_id(user.id_telegram, session)
@@ -180,7 +154,10 @@ async def delete_user(user: schemes.DeleteUser,
 def main():
     config = uvicorn.Config(app, host='127.0.0.1', port=8000, log_level="info")
     server = uvicorn.Server(config)
-    server.run()
+    try:
+        server.run()
+    except KeyboardInterrupt:
+        print("----Приложение было принудительно остановлено----")
 
 
 if __name__ == '__main__':
