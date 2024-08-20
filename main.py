@@ -18,7 +18,7 @@ async def lifespan(app: FastAPI):
     await engine.dispose()
 
 
-app = FastAPI(lifespan=lifespan, title="Hamster Bot API")
+app = FastAPI(lifespan=lifespan, title="Buyer Bot API")
 
 
 @app.exception_handler(Exception)
