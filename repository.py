@@ -118,3 +118,36 @@ async def create_user_tg(id_telegram: int, username: str, session: async_session
         await session.commit()
         await session.refresh(new_user)
 
+
+from sqlalchemy import select
+from sqlalchemy.orm import joinedload
+from models import User
+
+
+async def get_friends(id_telegram: int, session):
+    """
+    Получить список друзей пользователя с заданным id_telegram.
+    :param id_telegram: ID пользователя в Telegram.
+    :param session: Сессия базы данных.
+    :return: Список друзей с их username, count_tokens и level.
+    """
+    # Находим пользователя по id_telegram
+    result = await session.execute(
+            select(User)
+            .options(joinedload(User.friends))  # Подгружаем друзей вместе с пользователем
+            .where(User.id_telegram == id_telegram)
+    )
+    user = result.scalars().first()
+
+    if user is None:
+        return None
+
+    friends_list = []
+    for friend in user.friends:
+        friends_list.append({
+                'username': friend.user_name,
+                'count_tokens': friend.count_tokens,
+                'level': friend.level
+        })
+
+    return friends_list

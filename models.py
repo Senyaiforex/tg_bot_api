@@ -10,8 +10,8 @@ users_tasks = Table('users_tasks', Base.metadata,
 
 friends = Table(
         'friends', Base.metadata,
-        Column('friend1_id', ForeignKey('users.id'), primary_key=True),
-        Column('friend2_id', ForeignKey('users.id'), primary_key=True)
+        Column('friend1_id_telegram', ForeignKey('users.id_telegram'), primary_key=True),
+        Column('friend2_id_telegram', ForeignKey('users.id_telegram'), primary_key=True)
 )
 
 class User(Base):
@@ -34,10 +34,10 @@ class User(Base):
     friends = relationship(
         'User',
         secondary=friends,
-        primaryjoin=id == friends.c.friend1_id,
-        secondaryjoin=id == friends.c.friend2_id,
+        primaryjoin=id_telegram == friends.c.friend1_id_telegram,
+        secondaryjoin=id_telegram == friends.c.friend2_id_telegram,
         back_populates='friends',
-        foreign_keys=[friends.c.friend1_id, friends.c.friend2_id]
+        foreign_keys=[friends.c.friend1_id_telegram, friends.c.friend2_id_telegram]
     )
 
 class Task(Base):

@@ -8,7 +8,7 @@ import uvicorn
 from sqlalchemy.ext.asyncio import AsyncSession
 from database import engine, async_session
 from schemes import UserIn, UserOut
-
+from typing import List
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -112,7 +112,7 @@ async def change_token(data_new: schemes.ChangeToken,
     """
     • Описание: Изменяет количество токенов у пользователя.\n
     • Параметры:\n
-        ◦ data_new (тело запроса, схема ChangeToken): Данные для изменения токенов.\n
+        ◦ id_telegram, amount, add (тело запроса, схема ChangeToken): Данные для изменения токенов.\n
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий обновленную информацию о токенах пользователя.\n
     """
@@ -121,12 +121,12 @@ async def change_token(data_new: schemes.ChangeToken,
 
 
 @app.patch('/api/change_pharmd')
-async def change_pharmd(data_new: schemes.ChangeToken,
+async def change_pharmd(data_new: schemes.ChangePharmd,
                         session: AsyncSession = Depends(get_async_session)):
     """
     • Описание: Изменяет количество фарма у пользователя.\n
     • Параметры:\n
-        ◦ data_new (тело запроса, схема ChangeToken): Данные для изменения фарма.\n
+        ◦ id_telegram, amount, add (тело запроса, схема ChangeToken): Данные для изменения фарма.\n
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий обновленную информацию о фарме пользователя.\n
     """
@@ -140,7 +140,7 @@ async def delete_user(user: schemes.DeleteUser,
     """
     • Описание: Удаляет пользователя из базы данных.\n
     • Параметры:\n
-        ◦ user (тело запроса, схема DeleteUser): Данные пользователя для удаления.\n
+        ◦ id_telegram (тело запроса, схема DeleteUser): Данные пользователя для удаления.\n
     • Ответ:\n
         ◦ 200 OK: JSON объект, указывающий на успешное удаление.\n
 
@@ -149,6 +149,24 @@ async def delete_user(user: schemes.DeleteUser,
     await session.delete(user)
     await session.commit()
     return JSONResponse(content={"detail": "User deleted"})
+
+
+@app.get("/users/{id_telegram}/friends", response_model=List[dict])
+async def get_user_friends(id_telegram: int, session: AsyncSession = Depends(get_async_session)):
+    """
+    • Описание: Получить всех друзей пользователя \n
+    • Параметры:\n
+        ◦ telegram_id: Telegram  ID пользователя.\n
+    • Ответ:\n
+        ◦ 200 OK: JSON объект, содержащий информацию по каждому другу. Username, Количество токенов, уровень.\n
+
+    """
+    friends = await get_friends(id_telegram, session)
+
+    if friends is None:
+        raise HTTPException(status_code=404, detail="User not found or no friends")
+
+    return friends
 
 
 def main():
