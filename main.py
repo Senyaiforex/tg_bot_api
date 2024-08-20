@@ -151,7 +151,7 @@ async def delete_user(user: schemes.DeleteUser,
     return JSONResponse(content={"detail": "User deleted"})
 
 
-@app.get("/users/{id_telegram}/friends", response_model=List[dict])
+@app.get("/api/friends/{id_telegram}", response_model=List[dict])
 async def get_user_friends(id_telegram: int, session: AsyncSession = Depends(get_async_session)):
     """
     • Описание: Получить всех друзей пользователя \n
