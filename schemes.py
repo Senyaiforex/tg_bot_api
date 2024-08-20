@@ -62,13 +62,11 @@ class Friends(BaseModel):
     friend2_id: int = Field(default=..., description='ID второго друга')
 
 class ChangeToken(BaseModel):
-    id_telegram: int
     amount: int
     add: bool
 
 
 class ChangePharmd(BaseModel):
-    id_telegram: int
     amount: int
     add: bool
 

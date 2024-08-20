@@ -106,8 +106,8 @@ async def create_user(user: UserIn,
     return JSONResponse(user_dict)
 
 
-@app.patch('/api/change_token')
-async def change_token(data_new: schemes.ChangeToken,
+@app.patch('/api/change_token/{id_telegram}')
+async def change_token(id_telegram: int, data_new: schemes.ChangeToken,
                        session: AsyncSession = Depends(get_async_session)):
     """
     • Описание: Изменяет количество токенов у пользователя.\n
@@ -116,12 +116,12 @@ async def change_token(data_new: schemes.ChangeToken,
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий обновленную информацию о токенах пользователя.\n
     """
-    user = await change_tokens_by_id(data_new.id_telegram, data_new.amount, data_new.add, session)
+    user = await change_tokens_by_id(id_telegram, data_new.amount, data_new.add, session)
     return JSONResponse(content={'id_telegram': f'{user.id_telegram}', 'count_tokens': f'{user.count_tokens}'})
 
 
-@app.patch('/api/change_pharmd')
-async def change_pharmd(data_new: schemes.ChangePharmd,
+@app.patch('/api/change_pharmd/{id_telegram}')
+async def change_pharmd(id_telegram: int, data_new: schemes.ChangePharmd,
                         session: AsyncSession = Depends(get_async_session)):
     """
     • Описание: Изменяет количество фарма у пользователя.\n
@@ -130,7 +130,7 @@ async def change_pharmd(data_new: schemes.ChangePharmd,
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий обновленную информацию о фарме пользователя.\n
     """
-    user = await change_pharmd_by_id(data_new.id_telegram, data_new.amount, data_new.add, session)
+    user = await change_pharmd_by_id(id_telegram, data_new.amount, data_new.add, session)
     return JSONResponse(content={'id_telegram': f'{user.id_telegram}', 'count_pharmd': f'{user.count_pharmd}'})
 
 
