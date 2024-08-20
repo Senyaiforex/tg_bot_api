@@ -56,6 +56,22 @@ async def get_user(id_telegram: Annotated[int, Path(description="Telegram ID п�
     user = await get_user_by_telegram_id(id_telegram, session)
     return user
 
+@app.get("/api/friends/{id_telegram}", response_model=List[dict])
+async def get_user_friends(id_telegram: int, session: AsyncSession = Depends(get_async_session)):
+    """
+    • Описание: Получить всех друзей пользователя \n
+    • Параметры:\n
+        ◦ telegram_id: Telegram  ID пользователя.\n
+    • Ответ:\n
+        ◦ 200 OK: JSON объект, содержащий информацию по каждому другу. Username, Количество токенов, уровень.\n
+
+    """
+    friends = await get_friends(id_telegram, session)
+
+    if friends is None:
+        raise HTTPException(status_code=404, detail="User not found or no friends")
+
+    return friends
 
 @app.get("/api/get_count_tokens/{id_telegram}")
 async def get_tokens(id_telegram: Annotated[int, Path(description="Telegram ID пользователя", gt=0)],
@@ -150,23 +166,6 @@ async def delete_user(user: schemes.DeleteUser,
     await session.commit()
     return JSONResponse(content={"detail": "User deleted"})
 
-
-@app.get("/api/friends/{id_telegram}", response_model=List[dict])
-async def get_user_friends(id_telegram: int, session: AsyncSession = Depends(get_async_session)):
-    """
-    • Описание: Получить всех друзей пользователя \n
-    • Параметры:\n
-        ◦ telegram_id: Telegram  ID пользователя.\n
-    • Ответ:\n
-        ◦ 200 OK: JSON объект, содержащий информацию по каждому другу. Username, Количество токенов, уровень.\n
-
-    """
-    friends = await get_friends(id_telegram, session)
-
-    if friends is None:
-        raise HTTPException(status_code=404, detail="User not found or no friends")
-
-    return friends
 
 
 def main():
