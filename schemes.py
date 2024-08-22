@@ -14,7 +14,7 @@ class BaseUser(BaseModel):
             ...,
             description='Никнейм пользователя'
     )
-    count_token: str = Field(
+    count_tokens: int = Field(
             default=0,
             description='Количество токенов у пользователя'
     )
