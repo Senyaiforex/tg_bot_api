@@ -30,7 +30,7 @@ class User(Base):
     sale_count = Column(Integer, index=True, default=0)      # Количество продаж
     registration_date = Column(Date, default=datetime.utcnow) # Дата регистрации
 
-    tasks = relationship("Task", secondary=users_tasks, back_populates='users')
+    tasks = relationship("Task", secondary=users_tasks, back_populates='users', lazy='joined')
     friends = relationship(
         'User',
         secondary=friends,

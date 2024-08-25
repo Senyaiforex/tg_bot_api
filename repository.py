@@ -15,7 +15,6 @@ async def get_user_by_telegram_id(telegram_id: int, session: async_session):
     result = await session.execute(
             select(User)
             .options(joinedload(User.friends))  # Подгружаем друзей вместе с пользователем
-            .options(joinedload(User.tasks))
             .where(User.id_telegram == telegram_id)
     )
     user = result.scalars().first()

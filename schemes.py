@@ -54,17 +54,21 @@ class Friend(BaseModel):
     user_name: str = Field(default=..., description='Никнейм друга')
     count_coins: int = Field(default=..., description='Количество монет друга')
     level: int = Field(default=..., description='Уровень друга')
+
+
 class Tasks(BaseModel):
     id: int = Field(default=..., description='ID задачи')
+
 
 class UserOut(BaseUser):
     friends: Optional[List[Friend]] = Field(default=[], description='Друзья')
     tasks: Optional[List[Tasks]] = Field(default=[], description='Задачи')
+
     class Config:
         from_orm = True
         related_fields = {'friends': {'exclude': ['id_telegram', 'count_pharmd',
-                                                   'registration_date', 'purchase_count',
-                                                  'sale_count', 'count_invited_friends',]},
+                                                  'registration_date', 'purchase_count',
+                                                  'sale_count', 'count_invited_friends', ]},
                           'tasks': {'exclude': ['description', 'users']}}
 
 
