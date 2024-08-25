@@ -73,7 +73,7 @@ async def get_user_friends(id_telegram: int, session: AsyncSession = Depends(get
 
     return friends
 
-@app.get("/api/get_count_tokens/{id_telegram}")
+@app.get("/api/get_count_coins/{id_telegram}")
 async def get_tokens(id_telegram: Annotated[int, Path(description="Telegram ID пользователя", gt=0)],
                      session=Depends(get_async_session)):
     """
@@ -84,7 +84,7 @@ async def get_tokens(id_telegram: Annotated[int, Path(description="Telegram ID �
         ◦ 200 OK: JSON объект, содержащий количество токенов.\n
     """
     user = await get_user_by_telegram_id(id_telegram, session)
-    return JSONResponse(content={'count_tokens': f'{user.count_tokens}'},
+    return JSONResponse(content={'count_coins': f'{user.count_coins}'},
                         headers={'Content-Type': 'application/json'})
 
 
@@ -116,7 +116,7 @@ async def create_user(user: UserIn,
     user_dict = {
             "id_telegram": new_user.id_telegram,
             "user_name": new_user.user_name,
-            "count_token": new_user.count_tokens,
+            "count_token": new_user.count_coins,
             "count_pharmd": new_user.count_pharmd
     }
     return JSONResponse(user_dict)
@@ -133,7 +133,7 @@ async def change_token(id_telegram: int, data_new: schemes.ChangeToken,
         ◦ 200 OK: JSON объект, содержащий обновленную информацию о токенах пользователя.\n
     """
     user = await change_tokens_by_id(id_telegram, data_new.amount, data_new.add, session)
-    return JSONResponse(content={'id_telegram': f'{user.id_telegram}', 'count_tokens': f'{user.count_tokens}'})
+    return JSONResponse(content={'id_telegram': f'{user.id_telegram}', 'count_coins': f'{user.count_coins}'})
 
 
 @app.patch('/api/change_pharmd/{id_telegram}')

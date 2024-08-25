@@ -4,6 +4,7 @@ from datetime import date
 
 from pydantic import BaseModel, Field, HttpUrl
 
+
 class BaseUser(BaseModel):
     id_telegram: int = Field(
             ...,
@@ -14,7 +15,7 @@ class BaseUser(BaseModel):
             ...,
             description='Никнейм пользователя'
     )
-    count_tokens: int = Field(
+    count_coins: int = Field(
             default=0,
             description='Количество токенов у пользователя'
     )
@@ -43,23 +44,39 @@ class BaseUser(BaseModel):
     )
     # tasks: Optional[List[int]] = Field(default=None, description='Задачи пользователя')
     # friends: Optional[List[int]] = Field(default=None, description='Друзья пользователя')
+
+
 class UserIn(BaseUser):
     ...
 
+
+class Friend(BaseModel):
+    user_name: str = Field(default=..., description='Никнейм друга')
+    count_coins: int = Field(default=..., description='Количество монет друга')
+    level: int = Field(default=..., description='Уровень друга')
+class Tasks(BaseModel):
+    id: int = Field(default=..., description='ID задачи')
+
 class UserOut(BaseUser):
+    friends: Optional[List[Friend]] = Field(default=[], description='Друзья')
+    tasks: Optional[List[Tasks]] = Field(default=[], description='Задачи')
     class Config:
         from_orm = True
-
-
+        related_fields = {'friends': {'exclude': ['id_telegram', 'count_pharmd',
+                                                   'registration_date', 'purchase_count',
+                                                  'sale_count', 'count_invited_friends',]},
+                          'tasks': {'exclude': ['description', 'users']}}
 
 
 class Task(BaseModel):
     id: int = Field(default=..., description='ID задачи')
     description: str = Field(default=..., description='Описание задачи')
 
+
 class Friends(BaseModel):
     friend1_id: int = Field(default=..., description='ID первого друга')
     friend2_id: int = Field(default=..., description='ID второго друга')
+
 
 class ChangeToken(BaseModel):
     amount: int

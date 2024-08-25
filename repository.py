@@ -12,7 +12,12 @@ async def get_user_by_telegram_id(telegram_id: int, session: async_session):
     :param session:
     :return:
     """
-    result = await session.execute(select(models.User).where(models.User.id_telegram == telegram_id))
+    result = await session.execute(
+            select(User)
+            .options(joinedload(User.friends))  # Подгружаем друзей вместе с пользователем
+            .options(joinedload(User.tasks))
+            .where(User.id_telegram == telegram_id)
+    )
     user = result.scalars().first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -29,7 +34,7 @@ async def base_create_user(user: schemes.UserIn, session: async_session):
     new_user = models.User(
             id_telegram=user.id_telegram,
             user_name=user.user_name,
-            count_tokens=user.count_token,
+            count_coins=user.count_coins,
             count_pharmd=user.count_pharmd
     )
     result = await session.execute(select(models.User). \
@@ -63,9 +68,9 @@ async def change_tokens_by_id(
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     if add:
-        user.count_tokens += amount
+        user.count_coins += amount
     else:
-        user.count_tokens -= amount
+        user.count_coins -= amount
     await session.commit()
     return user
 
@@ -129,7 +134,7 @@ async def get_friends(id_telegram: int, session):
     Получить список друзей пользователя с заданным id_telegram.
     :param id_telegram: ID пользователя в Telegram.
     :param session: Сессия базы данных.
-    :return: Список друзей с их username, count_tokens и level.
+    :return: Список друзей с их username, count_coins и level.
     """
     # Находим пользователя по id_telegram
     result = await session.execute(
@@ -144,9 +149,10 @@ async def get_friends(id_telegram: int, session):
 
     friends_list = []
     for friend in user.friends:
+        print(friend.user_name)
         friends_list.append({
                 'username': friend.user_name,
-                'count_tokens': friend.count_tokens,
+                'count_coins': friend.count_coins,
                 'level': friend.level
         })
 

@@ -22,7 +22,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     id_telegram = Column(Integer, index=True, unique=True)
     user_name = Column(String, index=True)
-    count_tokens = Column(Integer, index=True, default=0)
+    count_coins = Column(Integer, index=True, default=0)
     count_pharmd = Column(Integer, index=True, default=65_000)
     level = Column(Integer, default=0)
     count_invited_friends = Column(Integer, index=True, default=0)
