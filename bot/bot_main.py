@@ -23,13 +23,13 @@ async def get_async_session() -> AsyncSession:
 
 # Убедитесь, что временная папка существует
 os.makedirs(MEDIA_DIR, exist_ok=True)
-BOT_TOKEN = "7006667556:AAFzRm7LXS3VoyqCIvN5QJ-8RRsixZ9uPek"
+BOT_TOKEN = "#"
 API_TOKEN = 'YOUR_BOT_API_TOKEN'
 CHANNEL_ID = '@Buyer_Marketplace'
 bot = Bot(BOT_TOKEN)
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
-web_app_url = 'https://tg-botttt.netlify.app'
+web_app_url = '#'
 last_bot_message = {}
 
 
