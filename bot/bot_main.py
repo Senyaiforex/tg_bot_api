@@ -2,24 +2,34 @@ import os
 import uuid
 import asyncio
 from aiogram import Bot, Dispatcher, F
-from aiogram.types import Message, FSInputFile, CallbackQuery
+from aiogram.types import Message, FSInputFile, CallbackQuery, KeyboardButton, WebAppInfo, ReplyKeyboardMarkup
 from aiogram.filters import Command, CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.state import State, StatesGroup
-from keyboard_uttils import *
+from sqlalchemy.ext.asyncio import AsyncSession
+from utils import *
 import functools
+from database import async_session, Base
+from app.repository import create_user_tg
+
 MEDIA_DIR = 'media'
+
+
+async def get_async_session() -> AsyncSession:
+    async with async_session() as session:
+        yield session
+
 
 # Убедитесь, что временная папка существует
 os.makedirs(MEDIA_DIR, exist_ok=True)
-BOT_TOKEN = "###"
+BOT_TOKEN = "7006667556:AAFzRm7LXS3VoyqCIvN5QJ-8RRsixZ9uPek"
 API_TOKEN = 'YOUR_BOT_API_TOKEN'
 CHANNEL_ID = '@Buyer_Marketplace'
 bot = Bot(BOT_TOKEN)
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
-web_app_url = 'https://buyermarketplace.site'
+web_app_url = 'https://tg-botttt.netlify.app'
 last_bot_message = {}
 
 
@@ -33,7 +43,8 @@ def subscribed(func):
     async def wrapper(message: Message, *args, **kwargs):
         user_id = message.from_user.id
         if not await is_user_subscribed(user_id, CHANNEL_ID):
-            await message.answer("Чтобы пользоваться ботом, необходимо подписаться на канал: @Buyer_Marketplace")
+            await message.answer("Чтобы пользоваться ботом, необходимо подписаться на канал: @Buyer_Marketplace\n"
+                                 "После подписки на канал Вы можете снова использовать бот, нажимая на любые кнопки в меню.")
             return
         return await func(message, *args, **kwargs)
 
@@ -52,9 +63,20 @@ class PostStates(StatesGroup):
 
 
 @dp.message(Command("start"))
-async def start(message: Message, command: CommandObject):
+async def start(message: Message, command: CommandObject) -> None:
+    """
+    Функция обработки команды /start, для начала работы с ботом
+    :param message: сообщение боту
+    :param command: команда /start
+    :return:
+    """
     picture = FSInputFile('static/start_pic.jpg')
     user_id = message.from_user.id
+    username = message.from_user.username
+    inviter_id = None
+    args = command.args
+    if args and args.startswith("invited_by_"):
+        inviter_id = int(args.split("_")[2])
     if await is_user_subscribed(user_id, CHANNEL_ID):
         # Если пользователь подписан, показываем меню
         text = ("Добро пожаловать!\n"
@@ -67,11 +89,18 @@ async def start(message: Message, command: CommandObject):
                 "После подписки снова нажмите /start")
         keyboard = await start_keyboard()
         await bot.send_photo(chat_id=user_id, photo=picture, caption=text, reply_markup=keyboard)
+    async for session in get_async_session():
+        if await get_user_bot(user_id, session):
+            return  # Если пользователь уже есть в базе, выходим из функции
+        if inviter_id:
+            await handle_invitation(inviter_id, user_id, username, session)
+        else:
+            await create_user_tg(user_id, username, session)
 
 
-@dp.message(Command("web"))  # /rn 1-100
+@dp.message(Command("web"))
 @subscribed
-async def webapp(message: Message, command: CommandObject):
+async def webapp(message: Message, command: CommandObject) -> None:
     """
     Функция обработки команды для перехода в веб приложение
     :param message:
@@ -92,7 +121,7 @@ async def webapp(message: Message, command: CommandObject):
 
 @dp.message(Command("menu"))
 @subscribed
-async def menu(message: Message, command: CommandObject):
+async def menu(message: Message, command: CommandObject) -> None:
     """
     Функция отображения меню
     :param message:
@@ -111,7 +140,7 @@ async def menu(message: Message, command: CommandObject):
 
 @dp.message(Command("public"))
 @subscribed
-async def public(message: Message, command: CommandObject):
+async def public(message: Message, command: CommandObject) -> None:
     """
     Функция обработки команды для размещения поста
     :param message:
@@ -133,7 +162,7 @@ async def public(message: Message, command: CommandObject):
 
 @dp.message(Command("catalog"))
 @subscribed
-async def catalog(message: Message, command: CommandObject):
+async def catalog(message: Message, command: CommandObject) -> None:
     """
     Функция отображения каталога товаров
     :param message:
@@ -151,7 +180,7 @@ async def catalog(message: Message, command: CommandObject):
 
 
 @dp.callback_query(lambda c: c.data == 'back_to_menu')
-async def back_to_menu(callback_query: CallbackQuery):
+async def back_to_menu(callback_query: CallbackQuery) -> None:
     """
     Обработка кнопки возврата в меню
     :param callback_query:
@@ -170,7 +199,7 @@ async def back_to_menu(callback_query: CallbackQuery):
 
 
 @dp.callback_query(lambda c: c.data == 'public')
-async def add_post_query(callback_query: CallbackQuery):
+async def add_post_query(callback_query: CallbackQuery) -> None:
     """
     Обработка кнопки возврата в меню
     :param callback_query:
@@ -191,7 +220,7 @@ async def add_post_query(callback_query: CallbackQuery):
 
 
 @dp.callback_query(lambda c: c.data == 'catalog')
-async def catalog_query(callback_query: CallbackQuery):
+async def catalog_query(callback_query: CallbackQuery) -> None:
     """
     Обработка кнопки возврата в меню
     :param callback_query:
@@ -212,7 +241,7 @@ async def catalog_query(callback_query: CallbackQuery):
 
 
 @dp.callback_query(lambda c: c.data == 'search')
-async def catalog_query(callback_query: CallbackQuery, state: FSMContext):
+async def catalog_query(callback_query: CallbackQuery, state: FSMContext) -> None:
     """
     Обработка кнопки поиска товара
     :param callback_query:
@@ -229,7 +258,7 @@ async def catalog_query(callback_query: CallbackQuery, state: FSMContext):
 
 
 @dp.message(PostStates.wait_product_search)
-async def process_product_name(message: Message, state: FSMContext):
+async def process_product_name(message: Message, state: FSMContext) -> None:
     user_id = message.from_user.id
     await state.update_data(product_seach=message.text)
     msg = await message.answer(f"✅ Отлично, добавили подписку на {message.text}\n"
@@ -241,7 +270,7 @@ async def process_product_name(message: Message, state: FSMContext):
 
 
 @dp.callback_query(lambda c: c.data.startswith('add_post'))
-async def add_post(callback_query: CallbackQuery, state: FSMContext):
+async def add_post(callback_query: CallbackQuery, state: FSMContext) -> None:
     data = callback_query.data
     user_id = callback_query.from_user.id
     method = data.split('_')[2]
@@ -254,7 +283,7 @@ async def add_post(callback_query: CallbackQuery, state: FSMContext):
 
 
 @dp.message(PostStates.wait_name)
-async def process_product_name(message: Message, state: FSMContext):
+async def process_product_name(message: Message, state: FSMContext) -> None:
     user_id = message.from_user.id
     await state.update_data(product_name=message.text)
     msg = await message.answer("Название товара успешно сохранено! "
@@ -266,7 +295,7 @@ async def process_product_name(message: Message, state: FSMContext):
 
 
 @dp.message(PostStates.wait_photo, F.content_type == 'photo')
-async def process_product_photo(message: Message, state: FSMContext):
+async def process_product_photo(message: Message, state: FSMContext) -> None:
     user_id = message.from_user.id
     photo = message.photo[-1]  # Выбираем фото с наибольшим разрешением
     file_id = photo.file_id
@@ -290,7 +319,7 @@ async def process_product_photo(message: Message, state: FSMContext):
 
 
 @dp.message(PostStates.wait_photo)
-async def process_invalid_photo(message: Message):
+async def process_invalid_photo(message: Message) -> None:
     user_id = message.from_user.id
     if user_id in last_bot_message:
         await bot.delete_message(chat_id=message.chat.id, message_id=last_bot_message[user_id])
@@ -299,7 +328,7 @@ async def process_invalid_photo(message: Message):
 
 
 @dp.message(PostStates.wait_price)
-async def process_product_price(message: Message, state: FSMContext):
+async def process_product_price(message: Message, state: FSMContext) -> None:
     user_id = message.from_user.id
     if user_id in last_bot_message:
         await bot.delete_message(chat_id=message.chat.id, message_id=last_bot_message[user_id])
@@ -318,7 +347,7 @@ async def process_product_price(message: Message, state: FSMContext):
 
 
 @dp.message(PostStates.wait_discount)
-async def process_product_discount(message: Message, state: FSMContext):
+async def process_product_discount(message: Message, state: FSMContext) -> None:
     user_id = message.from_user.id
     if user_id in last_bot_message:
         await bot.delete_message(chat_id=message.chat.id, message_id=last_bot_message[user_id])
@@ -337,7 +366,7 @@ async def process_product_discount(message: Message, state: FSMContext):
 
 
 @dp.message(F.text.in_({'WB', 'OZON', 'Пропустить'}), PostStates.wait_marketplace)
-async def marketplace(message: Message, state: FSMContext):
+async def marketplace(message: Message, state: FSMContext) -> None:
     # Обрабатываем текст, который был отправлен пользователем
     text = message.text
     user_id = message.from_user.id
@@ -355,7 +384,7 @@ async def marketplace(message: Message, state: FSMContext):
 
 
 @dp.message(PostStates.wait_url_account)
-async def account_url(message: Message, state: FSMContext):
+async def account_url(message: Message, state: FSMContext) -> None:
     user_id = message.from_user.id
     if user_id in last_bot_message:
         await bot.delete_message(chat_id=message.chat.id, message_id=last_bot_message[user_id])
@@ -369,7 +398,7 @@ async def account_url(message: Message, state: FSMContext):
 
 
 @dp.callback_query(lambda c: c.data == 'buyer', PostStates.wait_channel)
-async def choice_group(callback_query: CallbackQuery, state: FSMContext):
+async def choice_group(callback_query: CallbackQuery, state: FSMContext) -> None:
     data = callback_query.data
     user_id = callback_query.from_user.id
     if user_id in last_bot_message:
@@ -404,7 +433,7 @@ async def choice_group(callback_query: CallbackQuery, state: FSMContext):
 
 
 @dp.callback_query(lambda c: c.data == 'finish_public', PostStates.wait_channel)
-async def finish(callback_query: CallbackQuery, state: FSMContext):
+async def finish(callback_query: CallbackQuery, state: FSMContext) -> None:
     """
     Обработка кнопки опубликовать
     :param callback_query:
