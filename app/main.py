@@ -1,19 +1,20 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, Request
-from fastapi.params import Path, Header, Query, Annotated
+from fastapi.params import Path, Annotated, Query
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from repository import *
+
+from .repository import *
 import uvicorn
 from sqlalchemy.ext.asyncio import AsyncSession
-from database import engine, async_session
-from schemes import UserIn, UserOut
-from typing import List
+from database import engine, async_session, Base
+from .schemes import UserIn, UserOut, DeleteUser, ChangeCoins, ChangePharmd, HistoryTransactionOut
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
-        await conn.run_sync(models.Base.metadata.create_all)
+        await conn.run_sync(Base.metadata.create_all)
     yield
     await engine.dispose()
 
@@ -56,7 +57,8 @@ async def get_user(id_telegram: Annotated[int, Path(description="Telegram ID п�
     user = await get_user_by_telegram_id(id_telegram, session)
     return user
 
-@app.get("/api/friends/{id_telegram}", response_model=List[dict])
+
+@app.get("/api/friends/{id_telegram}", response_model=list[dict])
 async def get_user_friends(id_telegram: int, session: AsyncSession = Depends(get_async_session)):
     """
     • Описание: Получить всех друзей пользователя \n
@@ -73,9 +75,10 @@ async def get_user_friends(id_telegram: int, session: AsyncSession = Depends(get
 
     return friends
 
+
 @app.get("/api/get_count_coins/{id_telegram}")
-async def get_tokens(id_telegram: Annotated[int, Path(description="Telegram ID пользователя", gt=0)],
-                     session=Depends(get_async_session)):
+async def get_coins(id_telegram: Annotated[int, Path(description="Telegram ID пользователя", gt=0)],
+                    session=Depends(get_async_session)):
     """
     • Описание: Возвращает количество токенов у пользователя.\n
     • Параметры:\n
@@ -102,6 +105,32 @@ async def get_pharmd(id_telegram: Annotated[int, Path(description="Telegram ID �
     return JSONResponse(content={'count_pharmd': f'{user.count_pharmd}'}, headers={'Content-Type': 'application/json'})
 
 
+@app.get("/api/get_transactions/{id_telegram}", response_model=HistoryTransactionList)
+async def get_transactions(id_telegram: Annotated[int, Path(description="Telegram ID пользователя", gt=0)],
+                           limit: int=Query(default=30, description='Количество транзакций', gt=0),
+                           session=Depends(get_async_session)):
+    """
+    • Описание: Возвращает все транзакции пользователя.\n
+    • Параметры:\n
+        ◦ id_telegram (параметр пути, int): Telegram ID пользователя.\n
+        ◦ limit (параметр запроса, int): Лимит количества транзакций.\n
+    • Ответ:\n
+        ◦ 200 OK: JSON объект, содержащий все транзакции пользователя.\n
+    """
+    transactions = await get_transactions_by_id(id_telegram, limit, session)
+    formatted_transactions = [
+            HistoryTransactionOut(
+                    id=txn.id,
+                    change_amount=txn.change_amount,
+                    description=txn.description,
+                    transaction_date=txn.transaction_date.strftime('%d-%m-%Y %H:%M')
+            )
+            for txn in transactions
+    ]
+
+    return HistoryTransactionList(transactions=formatted_transactions)
+
+
 @app.post('/api/create_user', response_model=UserOut)
 async def create_user(user: UserIn,
                       session: AsyncSession = Depends(get_async_session)):
@@ -116,14 +145,14 @@ async def create_user(user: UserIn,
     user_dict = {
             "id_telegram": new_user.id_telegram,
             "user_name": new_user.user_name,
-            "count_token": new_user.count_coins,
+            "count_coins": new_user.count_coins,
             "count_pharmd": new_user.count_pharmd
     }
     return JSONResponse(user_dict)
 
 
-@app.patch('/api/change_token/{id_telegram}')
-async def change_token(id_telegram: int, data_new: schemes.ChangeToken,
+@app.patch('/api/change_coins/{id_telegram}')
+async def change_coins(id_telegram: int, data_new: ChangeCoins,
                        session: AsyncSession = Depends(get_async_session)):
     """
     • Описание: Изменяет количество токенов у пользователя.\n
@@ -132,12 +161,12 @@ async def change_token(id_telegram: int, data_new: schemes.ChangeToken,
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий обновленную информацию о токенах пользователя.\n
     """
-    user = await change_tokens_by_id(id_telegram, data_new.amount, data_new.add, session)
+    user = await change_coins_by_id(id_telegram, data_new.amount, data_new.add, session)
     return JSONResponse(content={'id_telegram': f'{user.id_telegram}', 'count_coins': f'{user.count_coins}'})
 
 
 @app.patch('/api/change_pharmd/{id_telegram}')
-async def change_pharmd(id_telegram: int, data_new: schemes.ChangePharmd,
+async def change_pharmd(id_telegram: int, data_new: ChangePharmd,
                         session: AsyncSession = Depends(get_async_session)):
     """
     • Описание: Изменяет количество фарма у пользователя.\n
@@ -151,7 +180,7 @@ async def change_pharmd(id_telegram: int, data_new: schemes.ChangePharmd,
 
 
 @app.delete('/api/delete_user')
-async def delete_user(user: schemes.DeleteUser,
+async def delete_user(user: DeleteUser,
                       session: AsyncSession = Depends(get_async_session)):
     """
     • Описание: Удаляет пользователя из базы данных.\n
@@ -165,7 +194,6 @@ async def delete_user(user: schemes.DeleteUser,
     await session.delete(user)
     await session.commit()
     return JSONResponse(content={"detail": "User deleted"})
-
 
 
 def main():

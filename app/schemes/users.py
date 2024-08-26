@@ -1,8 +1,8 @@
 from email.policy import default
 from typing import Optional, List
-from datetime import date
-
-from pydantic import BaseModel, Field, HttpUrl
+from datetime import date, datetime
+from .tasks import Tasks
+from pydantic import BaseModel, Field
 
 
 class BaseUser(BaseModel):
@@ -42,8 +42,6 @@ class BaseUser(BaseModel):
     registration_date: date = Field(
             description='Дата регистрации',
     )
-    # tasks: Optional[List[int]] = Field(default=None, description='Задачи пользователя')
-    # friends: Optional[List[int]] = Field(default=None, description='Друзья пользователя')
 
 
 class UserIn(BaseUser):
@@ -54,10 +52,6 @@ class Friend(BaseModel):
     user_name: str = Field(default=..., description='Никнейм друга')
     count_coins: int = Field(default=..., description='Количество монет друга')
     level: int = Field(default=..., description='Уровень друга')
-
-
-class Tasks(BaseModel):
-    id: int = Field(default=..., description='ID задачи')
 
 
 class UserOut(BaseUser):
@@ -72,47 +66,19 @@ class UserOut(BaseUser):
                           'tasks': {'exclude': ['description', 'users']}}
 
 
-class Task(BaseModel):
-    id: int = Field(default=..., description='ID задачи')
-    description: str = Field(default=..., description='Описание задачи')
-
-
-class Friends(BaseModel):
-    friend1_id: int = Field(default=..., description='ID первого друга')
-    friend2_id: int = Field(default=..., description='ID второго друга')
-
-
-class ChangeToken(BaseModel):
-    amount: int
-    add: bool
-
-
-class ChangePharmd(BaseModel):
-    amount: int
-    add: bool
-
-
 class DeleteUser(BaseModel):
     id_telegram: int
 
 
-class ChangeLevel(BaseModel):
-    id_telegram: int
-    amount: int
-    add: bool
+class HistoryTransactionOut(BaseModel):
+    id: int = Field(..., description='ID транзакции')
+    change_amount: int = Field(..., description='Изменение количества')
+    description: str = Field(..., description='Описание транзакции')
+    transaction_date: datetime | str = Field(..., description='Дата транзакции')
+
+    class Config:
+        from_attributes = True
 
 
-class ChangePurchase(BaseModel):
-    id_telegram: int
-    amount: int
-
-
-class ChangeSale(BaseModel):
-    id_telegram: int
-    amount: int
-
-
-class ChangeCountFriends(BaseModel):
-    id_telegram: int
-    amount: int
-    add: bool
+class HistoryTransactionList(BaseModel):
+    transactions: List[HistoryTransactionOut] = []
