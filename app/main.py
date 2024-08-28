@@ -94,6 +94,13 @@ async def get_coins(id_telegram: Annotated[int, Path(description="Telegram ID п
 @app.get("/api/get_top_users", response_model=TopUsers)
 async def get_top_users(limit: int = Query(default=10, description='Количество'),
                         session=Depends(get_async_session)):
+    """
+    • Описание: Возвращает топ пользователей отсортированных по count_coins.\n
+    • Параметры:\n
+        ◦ limit (параметр запроса, int): Количество пользователей из топа.\n
+    • Ответ:\n
+        ◦ 200 OK: JSON объект, содержащий массив с топом пользователей.\n
+    """
     users = await get_users_limit(limit, session)
     return TopUsers(top_users=users)
 
