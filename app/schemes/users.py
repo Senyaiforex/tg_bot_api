@@ -80,5 +80,15 @@ class HistoryTransactionOut(BaseModel):
         from_attributes = True
 
 
+class UserTopOut(BaseModel):
+    id_telegram: int = Field(..., description='ID пользователя')
+    user_name: str = Field(..., description='Никнейм пользователя')
+    count_coins: int = Field(..., description='Количество токенов')
+
+
+class TopUsers(BaseModel):
+    top_users: List[UserTopOut] = []
+
+
 class HistoryTransactionList(BaseModel):
     transactions: List[HistoryTransactionOut] = []

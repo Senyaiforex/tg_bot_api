@@ -1,10 +1,8 @@
-from typing import List, Dict, Union, Any
+from typing import List, Dict, Union
 
 from fastapi import HTTPException
-
-from app.schemes import HistoryTransactionList
 from database import async_session
-from .schemes import UserIn
+from .schemes import UserIn, UserTopOut
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 from .models import User, HistoryTransaction
@@ -175,10 +173,30 @@ async def get_transactions_by_id(id_telegram: int, limit: int, session) -> List[
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     result = await session.execute(
-        select(HistoryTransaction)
-        .where(HistoryTransaction.user_id == user.id)
-        .order_by(HistoryTransaction.transaction_date.desc())
-        .limit(limit)
+            select(HistoryTransaction)
+            .where(HistoryTransaction.user_id == user.id)
+            .order_by(HistoryTransaction.transaction_date.desc())
+            .limit(limit)
     )
     transactions = result.scalars().all()
     return transactions
+
+
+async def get_users_limit(limit: int, session) -> List[UserTopOut]:
+    """
+    Получить список всех пользователей
+    :param limit:
+    :return:
+    """
+    result = await session.execute(
+            select(User.id_telegram, User.user_name, User.count_coins)
+            .limit(limit)
+            .order_by(User.count_coins.desc())
+    )
+    users = result.fetchall()
+    users_list = [
+            UserTopOut(id_telegram=row[0], user_name=row[1], count_coins=row[2])
+            for row in users
+    ]
+
+    return users_list

@@ -8,7 +8,7 @@ from .repository import *
 import uvicorn
 from sqlalchemy.ext.asyncio import AsyncSession
 from database import engine, async_session, Base
-from .schemes import UserIn, UserOut, DeleteUser, ChangeCoins, ChangePharmd, HistoryTransactionOut
+from .schemes import UserIn, UserOut, DeleteUser, ChangeCoins, ChangePharmd, HistoryTransactionOut, HistoryTransactionList, TopUsers
 
 
 @asynccontextmanager
@@ -91,6 +91,13 @@ async def get_coins(id_telegram: Annotated[int, Path(description="Telegram ID п
                         headers={'Content-Type': 'application/json'})
 
 
+@app.get("/api/get_top_users", response_model=TopUsers)
+async def get_top_users(limit: int = Query(default=10, description='Количество'),
+                        session=Depends(get_async_session)):
+    users = await get_users_limit(limit, session)
+    return TopUsers(top_users=users)
+
+
 @app.get("/api/get_count_pharmd/{id_telegram}")
 async def get_pharmd(id_telegram: Annotated[int, Path(description="Telegram ID пользователя", gt=0)],
                      session=Depends(get_async_session)):
@@ -107,7 +114,7 @@ async def get_pharmd(id_telegram: Annotated[int, Path(description="Telegram ID �
 
 @app.get("/api/get_transactions/{id_telegram}", response_model=HistoryTransactionList)
 async def get_transactions(id_telegram: Annotated[int, Path(description="Telegram ID пользователя", gt=0)],
-                           limit: int=Query(default=30, description='Количество транзакций', gt=0),
+                           limit: int = Query(default=30, description='Количество транзакций', gt=0),
                            session=Depends(get_async_session)):
     """
     • Описание: Возвращает все транзакции пользователя.\n

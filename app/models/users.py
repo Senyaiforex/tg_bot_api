@@ -23,12 +23,12 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     id_telegram = Column(Integer, index=True, unique=True)
     user_name = Column(String, index=True)
-    count_coins = Column(Integer, index=True, default=0)
-    count_pharmd = Column(Integer, index=True, default=65_000)
+    count_coins = Column(Integer, default=0)
+    count_pharmd = Column(Integer, default=65_000)
     level = Column(Integer, default=0)
-    count_invited_friends = Column(Integer, index=True, default=0)
-    purchase_count = Column(Integer, index=True, default=0)  # Количество покупок
-    sale_count = Column(Integer, index=True, default=0)  # Количество продаж
+    count_invited_friends = Column(Integer, default=0)
+    purchase_count = Column(Integer, default=0)  # Количество покупок
+    sale_count = Column(Integer, default=0)  # Количество продаж
     registration_date = Column(Date, default=datetime.utcnow)  # Дата регистрации
     history_transactions = relationship("HistoryTransaction", backref='user')  # История
     tasks = relationship("Task", secondary=users_tasks, back_populates='users', lazy='joined')
@@ -58,7 +58,7 @@ class HistoryTransaction(Base):
     Модель истории транзакций пользователя
     """
     __tablename__ = 'history_transactions'
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey('users.id'))
     change_amount = Column(Integer, nullable=False)
     description = Column(String, nullable=False)
