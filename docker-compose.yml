@@ -6,3 +6,5 @@ services:
     container_name: tg_bot_api
     ports:
       - "8000:8000"
+    volumes:
+      - ./app.db:/app/app.db

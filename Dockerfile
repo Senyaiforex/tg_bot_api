@@ -2,7 +2,7 @@ FROM python:3.12
 
 
 # Устанавливаем рабочую директорию
-
+WORKDIR /app
 # Копируем файл зависимостей в контейнер
 COPY requirements.txt .
 
