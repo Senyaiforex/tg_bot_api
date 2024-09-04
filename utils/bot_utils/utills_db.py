@@ -11,7 +11,7 @@ async def get_user_bot(telegram_id: int, session: AsyncSession):
     :return:
     """
     result = await session.execute(select(User).where(User.id_telegram == telegram_id))
-    user = result.scalars().one_or_none()
+    user = result.scalars().first()
     return user
 
 

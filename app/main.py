@@ -154,7 +154,7 @@ async def get_task_status(id_telegram: Annotated[int, Path(description="Telegram
     • Ответ:\n
         ◦ 200 OK: JSON объект, {'completed': True of False}\n
     """
-    task_complete = await check_task_complete(id_telegram, id_task, session)
+    task_complete = await check_task_complete(id_telegram, id_task)
     return JSONResponse(content={'complete': task_complete})
 
 

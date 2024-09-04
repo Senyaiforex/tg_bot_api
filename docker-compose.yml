@@ -3,20 +3,37 @@ version: '3.8'
 services:
   fastapi:
     build:
-      context: .  # Контекст сборки для fastapi (корневая директория)
-      dockerfile: app/Dockerfile  # Путь к Dockerfile для fastapi
-    volumes:
-      - app_data:/app  # Монтируем общий том
+      context: .
+      dockerfile: ./app/Dockerfile
+    container_name: fastapi_app
     ports:
       - "8000:8000"
+    volumes:
+      - ./models:/app/models
+      - ./repository:/app/repository
+      - ./utils:/app/utils
+      - ./database.py:/app/database.py
+      - ./app.db:/app/app.db
+    depends_on:
+      - bot
+    networks:
+      - my_network
 
   bot:
     build:
-      context: .  # Контекст сборки для bot (корневая директория)
-      dockerfile: bot/Dockerfile  # Путь к Dockerfile для bot
+      context: .
+      dockerfile: ./bot/Dockerfile
+    container_name: telegram_bot
+    ports:
+      - "8443:8443"
     volumes:
-      - app_data:/bot  # Монтируем общий том
-
-volumes:
-  app_data:
-    driver: local
+      - ./models:/bot/models
+      - ./repository:/bot/repository
+      - ./utils:/bot/utils
+      - ./database.py:/bot/database.py
+      - ./app.db:/bot/app.db
+    networks:
+      - my_network
+networks:
+  my_network:
+    driver: bridge

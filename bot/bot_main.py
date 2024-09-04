@@ -1,3 +1,4 @@
+import multiprocessing
 import os
 import uuid
 import asyncio
@@ -13,6 +14,9 @@ import functools
 from keyboards import *
 from database import async_session, Base
 from repository import create_user_tg
+from aiohttp import web
+from repository import get_user_by_telegram_id, get_task_by_id, add_task
+import subprocess
 
 MEDIA_DIR = 'media'
 
@@ -22,7 +26,6 @@ async def get_async_session() -> AsyncSession:
         yield session
 
 
-# Убедитесь, что временная папка существует
 os.makedirs(MEDIA_DIR, exist_ok=True)
 BOT_TOKEN = "7006667556:AAFzRm7LXS3VoyqCIvN5QJ-8RRsixZ9uPek"
 API_TOKEN = 'YOUR_BOT_API_TOKEN'
@@ -31,7 +34,6 @@ bot = Bot(BOT_TOKEN)
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
 web_app_url = 'https://tg-botttt.netlify.app'
-
 
 
 async def is_user_subscribed(user_id: int, channel_id: str) -> bool:
@@ -487,7 +489,25 @@ async def finish(callback_query: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
 
 
+async def get_channel_id_by_url(url: str) -> str:
+    channel_id = url.split("//")[-1].split("/")[1]
+    return f'@{channel_id}'
+
+
+async def check_task_complete(telegram_id: int, task_id: int) -> bool:
+    async for session in get_async_session():
+        user = await get_user_by_telegram_id(telegram_id, session)
+        task = await get_task_by_id(task_id, session)
+        if task.type_task == 'subscribe':
+            if await is_user_subscribed(telegram_id, await get_channel_id_by_url(task.url)):
+                await add_task(user, task, session)
+                return True
+        return False
+
+
 async def main():
+    subprocess.Popen(["python", "web_server.py"])
+    await asyncio.sleep(2)
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 

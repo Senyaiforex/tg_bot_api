@@ -1,6 +1,6 @@
 from pydantic import field_validator
 from sqlalchemy import Column, String, Integer
-from app.models.users import users_tasks
+from .users import users_tasks
 from sqlalchemy.orm import relationship
 from database import Base
 from sqlalchemy_utils.types.choice import ChoiceType

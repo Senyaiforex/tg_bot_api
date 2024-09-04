@@ -1,6 +1,6 @@
 from typing import Optional, List
 from datetime import date, datetime
-from app.schemes.tasks import TaskByUser
+from .tasks import TaskByUser
 from pydantic import BaseModel, Field, field_validator
 
 
