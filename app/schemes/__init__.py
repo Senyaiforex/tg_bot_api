@@ -1,4 +1,3 @@
-from .users import BaseUser, UserIn, UserOut, DeleteUser, Friend, HistoryTransactionList, HistoryTransactionOut, \
-    TopUsers, UserTopOut
-from .specifications import ChangeSale, ChangeCoins, ChangeLevel, ChangePharmd, ChangePurchase, ChangeCountFriends
-from .tasks import Task
+from app.schemes.users import BaseUser, UserIn, UserOut, DeleteUser, Friend, HistoryTransactionOut, UserTopOut
+from app.schemes.specifications import ChangeSale, ChangeCoins, ChangeLevel, ChangePharmd, ChangePurchase, ChangeCountFriends
+from app.schemes.tasks import TaskOut

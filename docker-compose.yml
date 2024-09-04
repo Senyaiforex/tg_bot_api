@@ -1,10 +1,22 @@
-version: "3.8"
+version: '3.8'
 
 services:
-  app:
-    build: .
-    container_name: tg_bot_api
+  fastapi:
+    build:
+      context: .  # Контекст сборки для fastapi (корневая директория)
+      dockerfile: app/Dockerfile  # Путь к Dockerfile для fastapi
+    volumes:
+      - app_data:/app  # Монтируем общий том
     ports:
       - "8000:8000"
+
+  bot:
+    build:
+      context: .  # Контекст сборки для bot (корневая директория)
+      dockerfile: bot/Dockerfile  # Путь к Dockerfile для bot
     volumes:
-      - ./app.db:/app/app.db
+      - app_data:/bot  # Монтируем общий том
+
+volumes:
+  app_data:
+    driver: local

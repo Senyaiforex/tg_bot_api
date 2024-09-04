@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, String, Integer, Table, ForeignKey, Date, DateTime
+from sqlalchemy import Column, String, Integer, Table, ForeignKey, Date, DateTime, Boolean
 from sqlalchemy.orm import relationship
 from database import Base, async_session
 
@@ -27,10 +27,11 @@ class User(Base):
     count_pharmd = Column(Integer, default=65_000)
     level = Column(Integer, default=0)
     count_invited_friends = Column(Integer, default=0)
-    purchase_count = Column(Integer, default=0)  # Количество покупок
-    sale_count = Column(Integer, default=0)  # Количество продаж
-    registration_date = Column(Date, default=datetime.utcnow)  # Дата регистрации
-    history_transactions = relationship("HistoryTransaction", backref='user')  # История
+    purchase_count = Column(Integer, default=0)
+    sale_count = Column(Integer, default=0)
+    registration_date = Column(Date, default=datetime.utcnow)
+    history_transactions = relationship("HistoryTransaction", backref='user')
+    active = Column(Boolean, default=1)
     tasks = relationship("Task", secondary=users_tasks, back_populates='users', lazy='joined')
     friends = relationship(
             'User',
@@ -41,7 +42,9 @@ class User(Base):
             foreign_keys=[friends.c.friend1_id_telegram, friends.c.friend2_id_telegram]
     )
 
-    async def update_count_coins(self, session: async_session, amount: int, description: str):
+    async def update_count_coins(self, session: async_session, amount: int, description: str, new=False):
+        if new:
+            self.count_coins = 0
         self.count_coins += amount
         await session.commit()
         transaction = HistoryTransaction(

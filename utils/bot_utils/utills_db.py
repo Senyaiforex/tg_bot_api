@@ -1,6 +1,6 @@
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models import User, friends
+from models import User, friends
 
 
 async def get_user_bot(telegram_id: int, session: AsyncSession):
@@ -29,11 +29,11 @@ async def handle_invitation(inviter_id: int, user_id: int, username: str, sessio
     user = query.scalars().one_or_none()
     if user:
         return
-    inviter.count_coins += 5000
+    await inviter.update_count_coins(session, 5000, f"Приглашение друга")
     inviter.count_invited_friends += 1
     new_user = User(id_telegram=user_id,
-                    user_name=username,
-                    count_coins=5000)
+                    user_name=username)
+    await new_user.update_count_coins(session, 5000, f"Бонус за регистрацию", new=True)
     session.add(new_user)
     await session.execute(friends.insert().values(
             friend1_id_telegram=inviter_id,

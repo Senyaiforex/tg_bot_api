@@ -4,11 +4,13 @@ from fastapi.params import Path, Annotated, Query
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from .repository import *
+from utils.app_utils import check_task_complete
+from repository import *
 import uvicorn
 from sqlalchemy.ext.asyncio import AsyncSession
 from database import engine, async_session, Base
-from .schemes import UserIn, UserOut, DeleteUser, ChangeCoins, ChangePharmd, HistoryTransactionOut, HistoryTransactionList, TopUsers
+from schemes import UserIn, UserOut, DeleteUser, ChangeCoins, ChangePharmd, HistoryTransactionOut, \
+    BaseUser, TaskOut
 
 
 @asynccontextmanager
@@ -59,11 +61,12 @@ async def get_user(id_telegram: Annotated[int, Path(description="Telegram ID п�
 
 
 @app.get("/api/friends/{id_telegram}", response_model=list[dict])
-async def get_user_friends(id_telegram: int, session: AsyncSession = Depends(get_async_session)):
+async def get_user_friends(id_telegram: Annotated[int, Path(description="Telegram ID пользователя", gt=0)],
+                           session: AsyncSession = Depends(get_async_session)):
     """
     • Описание: Получить всех друзей пользователя \n
     • Параметры:\n
-        ◦ telegram_id: Telegram  ID пользователя.\n
+        ◦ id_telegram (параметр пути, int): Telegram ID пользователя.\n
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий информацию по каждому другу. Username, Количество токенов, уровень.\n
 
@@ -91,18 +94,20 @@ async def get_coins(id_telegram: Annotated[int, Path(description="Telegram ID п
                         headers={'Content-Type': 'application/json'})
 
 
-@app.get("/api/get_top_users", response_model=TopUsers)
+@app.get("/api/get_top_users")
 async def get_top_users(limit: int = Query(default=10, description='Количество'),
+                        offset: int = Query(default=0, description='Пагинация'),
                         session=Depends(get_async_session)):
     """
     • Описание: Возвращает топ пользователей отсортированных по count_coins.\n
     • Параметры:\n
         ◦ limit (параметр запроса, int): Количество пользователей из топа.\n
+        ◦ offset (параметр запроса, int): Пагинация.\n
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий массив с топом пользователей.\n
     """
-    users = await get_users_limit(limit, session)
-    return TopUsers(top_users=users)
+    users = await get_users_limit(limit, offset, session)
+    return JSONResponse(users, status_code=200)
 
 
 @app.get("/api/get_count_pharmd/{id_telegram}")
@@ -119,33 +124,55 @@ async def get_pharmd(id_telegram: Annotated[int, Path(description="Telegram ID �
     return JSONResponse(content={'count_pharmd': f'{user.count_pharmd}'}, headers={'Content-Type': 'application/json'})
 
 
-@app.get("/api/get_transactions/{id_telegram}", response_model=HistoryTransactionList)
+@app.get("/api/get_transactions/{id_telegram}", response_model=list[HistoryTransactionOut])
 async def get_transactions(id_telegram: Annotated[int, Path(description="Telegram ID пользователя", gt=0)],
                            limit: int = Query(default=30, description='Количество транзакций', gt=0),
+                           offset: int = Query(default=0, description='Пагинация'),
                            session=Depends(get_async_session)):
     """
     • Описание: Возвращает все транзакции пользователя.\n
     • Параметры:\n
         ◦ id_telegram (параметр пути, int): Telegram ID пользователя.\n
         ◦ limit (параметр запроса, int): Лимит количества транзакций.\n
+        ◦ offset (параметр запроса, int): Пагинация.\n
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий все транзакции пользователя.\n
     """
-    transactions = await get_transactions_by_id(id_telegram, limit, session)
-    formatted_transactions = [
-            HistoryTransactionOut(
-                    id=txn.id,
-                    change_amount=txn.change_amount,
-                    description=txn.description,
-                    transaction_date=txn.transaction_date.strftime('%d-%m-%Y %H:%M')
-            )
-            for txn in transactions
-    ]
-
-    return HistoryTransactionList(transactions=formatted_transactions)
+    transactions = await get_transactions_by_id(id_telegram, limit, offset, session)
+    return transactions
 
 
-@app.post('/api/create_user', response_model=UserOut)
+@app.get('/api/check_task_complete/{id_telegram}/{id_task}')
+async def get_task_status(id_telegram: Annotated[int, Path(description="Telegram ID пользователя", gt=0)],
+                          id_task: Annotated[int, Path(description="ID задачи", gt=0)],
+                          session=Depends(get_async_session)):
+    """
+    • Описание: Метод для проверки, выполнена ли задача пользователем\n
+    • Параметры:\n
+        ◦ id_telegram (параметр пути, int): Telegram ID пользователя.\n
+        ◦ id_task (параметр пути, int): ID задачи.\n
+    • Ответ:\n
+        ◦ 200 OK: JSON объект, {'completed': True of False}\n
+    """
+    task_complete = await check_task_complete(id_telegram, id_task, session)
+    return JSONResponse(content={'complete': task_complete})
+
+
+@app.get('/api/tasks/{type_task}', response_model=list[TaskOut])
+async def get_tasks(type_task: Annotated[str, Path(description="Тип задачи")],
+                    session=Depends(get_async_session)):
+    """
+    • Описание: Метод для получения всех задач нужного типа \n
+    • Параметры:\n
+        ◦ type_task (параметр пути, str): Тип задачи('subscribe', 'comment', 'like', 'save', 'watch').\n
+    • Ответ:\n
+        ◦ 200 OK: JSON объект, содержащий все задачи нужного типа\n
+    """
+    tasks = await get_tasks_by_type(type_task, session)
+    return tasks
+
+
+@app.post('/api/create_user', response_model=BaseUser)
 async def create_user(user: UserIn,
                       session: AsyncSession = Depends(get_async_session)):
     """
@@ -156,13 +183,7 @@ async def create_user(user: UserIn,
         ◦ 200 OK: JSON объект, содержащий информацию о созданном пользователе.\n
     """
     new_user = await base_create_user(user, session)
-    user_dict = {
-            "id_telegram": new_user.id_telegram,
-            "user_name": new_user.user_name,
-            "count_coins": new_user.count_coins,
-            "count_pharmd": new_user.count_pharmd
-    }
-    return JSONResponse(user_dict)
+    return new_user
 
 
 @app.patch('/api/change_coins/{id_telegram}')

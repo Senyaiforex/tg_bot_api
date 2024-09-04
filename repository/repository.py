@@ -2,10 +2,9 @@ from typing import List, Dict, Union
 
 from fastapi import HTTPException
 from database import async_session
-from .schemes import UserIn, UserTopOut
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
-from .models import User, HistoryTransaction
+from models import User, HistoryTransaction, Task
 
 
 async def get_user_by_telegram_id(telegram_id: int, session: async_session) -> User:
@@ -26,7 +25,7 @@ async def get_user_by_telegram_id(telegram_id: int, session: async_session) -> U
     return user
 
 
-async def base_create_user(user: UserIn, session: async_session) -> User:
+async def base_create_user(user: User, session: async_session) -> User:
     """
     Функция для создания нового пользователя в базе данных
     :param user:
@@ -52,6 +51,30 @@ async def base_create_user(user: UserIn, session: async_session) -> User:
         await session.commit()
         await session.refresh(new_user)
         return new_user
+
+
+async def get_task_by_id(task_id: int, session: async_session) -> Task:
+    result = await session.execute(
+            select(Task)
+            .where(Task.id == task_id)
+    )
+    task = result.scalars().first()
+    return task
+
+
+async def add_task(user: User, task: Task, session):
+    if task not in user.tasks:
+        user.tasks.append(task)
+        await session.commit()
+
+
+async def get_tasks_by_type(type_task: str, session) -> list[Task]:
+    result = await session.execute(
+            select(Task)
+            .where(Task.type_task == type_task)
+    )
+    tasks = result.scalars().all()
+    return tasks
 
 
 async def change_coins_by_id(
@@ -159,7 +182,7 @@ async def get_friends(id_telegram: int, session) -> List[Dict[str, Union[int, st
     return friends_list
 
 
-async def get_transactions_by_id(id_telegram: int, limit: int, session) -> List[HistoryTransaction]:
+async def get_transactions_by_id(id_telegram: int, limit: int, offset: int, session) -> List[HistoryTransaction]:
     """
     Получить список всех транзакций пользователя с заданным id_telegram.
     :param id_telegram: int
@@ -177,12 +200,13 @@ async def get_transactions_by_id(id_telegram: int, limit: int, session) -> List[
             .where(HistoryTransaction.user_id == user.id)
             .order_by(HistoryTransaction.transaction_date.desc())
             .limit(limit)
+            .offset(offset)
     )
     transactions = result.scalars().all()
     return transactions
 
 
-async def get_users_limit(limit: int, session) -> List[UserTopOut]:
+async def get_users_limit(limit: int, offset: int, session) -> List[dict]:
     """
     Получить список всех пользователей
     :param limit:
@@ -191,11 +215,12 @@ async def get_users_limit(limit: int, session) -> List[UserTopOut]:
     result = await session.execute(
             select(User.id_telegram, User.user_name, User.count_coins)
             .limit(limit)
+            .offset(offset)
             .order_by(User.count_coins.desc())
     )
     users = result.fetchall()
     users_list = [
-            UserTopOut(id_telegram=row[0], user_name=row[1], count_coins=row[2])
+            dict(id_telegram=row[0], user_name=row[1], count_coins=row[2])
             for row in users
     ]
 

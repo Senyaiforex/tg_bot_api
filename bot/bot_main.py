@@ -8,10 +8,11 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.state import State, StatesGroup
 from sqlalchemy.ext.asyncio import AsyncSession
-from utils import *
+from utils.bot_utils import *
 import functools
+from keyboards import *
 from database import async_session, Base
-from app.repository import create_user_tg
+from repository import create_user_tg
 
 MEDIA_DIR = 'media'
 
@@ -23,14 +24,14 @@ async def get_async_session() -> AsyncSession:
 
 # Убедитесь, что временная папка существует
 os.makedirs(MEDIA_DIR, exist_ok=True)
-BOT_TOKEN = "#"
+BOT_TOKEN = "7006667556:AAFzRm7LXS3VoyqCIvN5QJ-8RRsixZ9uPek"
 API_TOKEN = 'YOUR_BOT_API_TOKEN'
 CHANNEL_ID = '@Buyer_Marketplace'
 bot = Bot(BOT_TOKEN)
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
-web_app_url = '#'
-last_bot_message = {}
+web_app_url = 'https://tg-botttt.netlify.app'
+
 
 
 async def is_user_subscribed(user_id: int, channel_id: str) -> bool:
@@ -100,7 +101,7 @@ async def start(message: Message, command: CommandObject) -> None:
 
 @dp.message(Command("web"))
 @subscribed
-async def webapp(message: Message, command: CommandObject) -> None:
+async def webapp(message: Message, command: CommandObject, state: FSMContext) -> None:
     """
     Функция обработки команды для перехода в веб приложение
     :param message:
@@ -112,16 +113,18 @@ async def webapp(message: Message, command: CommandObject) -> None:
     # Создаем клавиатуру с кнопкой
     keyboard = ReplyKeyboardMarkup(keyboard=[[web_button]], resize_keyboard=True)
     # Отправляем сообщение с клавиатурой
-    if user_id in last_bot_message:
-        await bot.delete_message(chat_id=message.chat.id, message_id=last_bot_message[user_id])
+    data = await state.get_data()
+    previous_message_id = data.get('last_bot_message')
+    if previous_message_id:
+        await bot.delete_message(chat_id=message.chat.id, message_id=previous_message_id)
     msg = await message.answer("Нажмите 'Запустить', чтобы открыть веб-приложение:", reply_markup=keyboard)
-    last_bot_message[user_id] = msg.message_id
+    await state.update_data(last_bot_message=msg.message_id)
     await message.delete()
 
 
 @dp.message(Command("menu"))
 @subscribed
-async def menu(message: Message, command: CommandObject) -> None:
+async def menu(message: Message, command: CommandObject, state: FSMContext) -> None:
     """
     Функция отображения меню
     :param message:
@@ -131,16 +134,18 @@ async def menu(message: Message, command: CommandObject) -> None:
     picture = FSInputFile('static/menu_pic.jpg')
     user_id = message.from_user.id
     keyboard = await menu_keyboard(web_app_url)
-    if user_id in last_bot_message:
-        await bot.delete_message(chat_id=message.chat.id, message_id=last_bot_message[user_id])
+    data = await state.get_data()
+    previous_message_id = data.get('last_bot_message')
+    if previous_message_id:
+        await bot.delete_message(chat_id=message.chat.id, message_id=previous_message_id)
     msg = await bot.send_photo(user_id, photo=picture, reply_markup=keyboard)
-    last_bot_message[user_id] = msg.message_id
+    await state.update_data(last_bot_message=msg.message_id)
     await message.delete()
 
 
 @dp.message(Command("public"))
 @subscribed
-async def public(message: Message, command: CommandObject) -> None:
+async def public(message: Message, command: CommandObject, state: FSMContext) -> None:
     """
     Функция обработки команды для размещения поста
     :param message:
@@ -153,16 +158,18 @@ async def public(message: Message, command: CommandObject) -> None:
     picture = FSInputFile('static/public_pic.jpg')
     user_id = message.from_user.id
     keyboard = await public_keyboard()
-    if user_id in last_bot_message:
-        await bot.delete_message(chat_id=message.chat.id, message_id=last_bot_message[user_id])
+    data = await state.get_data()
+    previous_message_id = data.get('last_bot_message')
+    if previous_message_id:
+        await bot.delete_message(chat_id=message.chat.id, message_id=previous_message_id)
     msg = await bot.send_photo(user_id, photo=picture, reply_markup=keyboard)
-    last_bot_message[user_id] = msg.message_id
+    await state.update_data(last_bot_message=msg.message_id)
     await message.delete()
 
 
 @dp.message(Command("catalog"))
 @subscribed
-async def catalog(message: Message, command: CommandObject) -> None:
+async def catalog(message: Message, command: CommandObject, state: FSMContext) -> None:
     """
     Функция отображения каталога товаров
     :param message:
@@ -172,15 +179,17 @@ async def catalog(message: Message, command: CommandObject) -> None:
     picture = FSInputFile('static/catalog_pic.jpg')
     user_id = message.from_user.id
     keyboard = await catalog_keyboard()
-    if user_id in last_bot_message:
-        await bot.delete_message(chat_id=message.chat.id, message_id=last_bot_message[user_id])
+    data = await state.get_data()
+    previous_message_id = data.get('last_bot_message')
+    if previous_message_id:
+        await bot.delete_message(chat_id=message.chat.id, message_id=previous_message_id)
     msg = await bot.send_photo(user_id, photo=picture, reply_markup=keyboard)
-    last_bot_message[user_id] = msg.message_id
+    await state.update_data(last_bot_message=msg.message_id)
     await message.delete()
 
 
 @dp.callback_query(lambda c: c.data == 'back_to_menu')
-async def back_to_menu(callback_query: CallbackQuery) -> None:
+async def back_to_menu(callback_query: CallbackQuery, state: FSMContext) -> None:
     """
     Обработка кнопки возврата в меню
     :param callback_query:
@@ -189,17 +198,18 @@ async def back_to_menu(callback_query: CallbackQuery) -> None:
     user_id = callback_query.from_user.id
     picture = FSInputFile('static/menu_pic.jpg')
     keyboard = await menu_keyboard(web_app_url)
-
-    if user_id in last_bot_message:
-        await bot.delete_message(chat_id=callback_query.message.chat.id, message_id=last_bot_message[user_id])
+    data = await state.get_data()
+    previous_message_id = data.get('last_bot_message')
+    if previous_message_id:
+        await bot.delete_message(chat_id=callback_query.message.chat.id, message_id=previous_message_id)
     msg = await bot.send_photo(user_id, photo=picture, reply_markup=keyboard)
-    last_bot_message[user_id] = msg.message_id
+    await state.update_data(last_bot_message=msg.message_id)
 
     await callback_query.answer()
 
 
 @dp.callback_query(lambda c: c.data == 'public')
-async def add_post_query(callback_query: CallbackQuery) -> None:
+async def add_post_query(callback_query: CallbackQuery, state: FSMContext) -> None:
     """
     Обработка кнопки возврата в меню
     :param callback_query:
@@ -211,16 +221,18 @@ async def add_post_query(callback_query: CallbackQuery) -> None:
     user_id = callback_query.from_user.id
     picture = FSInputFile('static/public_pic.jpg')
     keyboard = await public_keyboard()
-    if user_id in last_bot_message:
-        await bot.delete_message(chat_id=callback_query.message.chat.id, message_id=last_bot_message[user_id])
+    data = await state.get_data()
+    previous_message_id = data.get('last_bot_message')
+    if previous_message_id:
+        await bot.delete_message(chat_id=callback_query.message.chat.id, message_id=previous_message_id)
     msg = await bot.send_photo(user_id, photo=picture, reply_markup=keyboard, caption=text)
-    last_bot_message[user_id] = msg.message_id
+    await state.update_data(last_bot_message=msg.message_id)
 
     await callback_query.answer()
 
 
 @dp.callback_query(lambda c: c.data == 'catalog')
-async def catalog_query(callback_query: CallbackQuery) -> None:
+async def catalog_query(callback_query: CallbackQuery, state: FSMContext) -> None:
     """
     Обработка кнопки возврата в меню
     :param callback_query:
@@ -232,10 +244,12 @@ async def catalog_query(callback_query: CallbackQuery) -> None:
     user_id = callback_query.from_user.id
     picture = FSInputFile('static/catalog_pic.jpg')
     keyboard = await catalog_keyboard()
-    if user_id in last_bot_message:
-        await bot.delete_message(chat_id=callback_query.message.chat.id, message_id=last_bot_message[user_id])
+    data = await state.get_data()
+    previous_message_id = data.get('last_bot_message')
+    if previous_message_id:
+        await bot.delete_message(chat_id=callback_query.message.chat.id, message_id=previous_message_id)
     msg = await bot.send_photo(user_id, photo=picture, reply_markup=keyboard, caption=text)
-    last_bot_message[user_id] = msg.message_id
+    await state.update_data(last_bot_message=msg.message_id)
 
     await callback_query.answer()
 
@@ -248,11 +262,13 @@ async def catalog_query(callback_query: CallbackQuery, state: FSMContext) -> Non
     :return:
     """
     user_id = callback_query.from_user.id
-    if user_id in last_bot_message:
-        await bot.delete_message(chat_id=callback_query.message.chat.id, message_id=last_bot_message[user_id])
+    data = await state.get_data()
+    previous_message_id = data.get('last_bot_message')
+    if previous_message_id:
+        await bot.delete_message(chat_id=callback_query.message.chat.id, message_id=previous_message_id)
     msg = await bot.send_message(user_id, text="Тут вы можете добавить нужный вам товар, когда он появится в продаже "
                                                "со скидкой, мы отправим вам сообщение в телеграмм!\nПример: Юбка")
-    last_bot_message[user_id] = msg.message_id
+    await state.update_data(last_bot_message=msg.message_id)
     await state.set_state(PostStates.wait_product_search)
     await callback_query.answer()
 
@@ -263,10 +279,12 @@ async def process_product_name(message: Message, state: FSMContext) -> None:
     await state.update_data(product_seach=message.text)
     msg = await message.answer(f"✅ Отлично, добавили подписку на {message.text}\n"
                                "Когда опубликуется, вам придет уведомление.")
-    if user_id in last_bot_message:
-        await bot.delete_message(chat_id=message.chat.id, message_id=last_bot_message[user_id])
+    data = await state.get_data()
+    previous_message_id = data.get('last_bot_message')
+    if previous_message_id:
+        await bot.delete_message(chat_id=message.chat.id, message_id=previous_message_id)
     await state.clear()
-    last_bot_message[user_id] = msg.message_id
+    await state.update_data(last_bot_message=msg.message_id)
 
 
 @dp.callback_query(lambda c: c.data.startswith('add_post'))
@@ -275,11 +293,13 @@ async def add_post(callback_query: CallbackQuery, state: FSMContext) -> None:
     user_id = callback_query.from_user.id
     method = data.split('_')[2]
     if method == 'free':
-        if user_id in last_bot_message:
-            await bot.delete_message(chat_id=callback_query.message.chat.id, message_id=last_bot_message[user_id])
+        data = await state.get_data()
+        previous_message_id = data.get('last_bot_message')
+        if previous_message_id:
+            await bot.delete_message(chat_id=callback_query.message.chat.id, message_id=previous_message_id)
         msg = await bot.send_message(user_id, text='Введите название товара:')
         await state.set_state(PostStates.wait_name)
-    last_bot_message[user_id] = msg.message_id
+    await state.update_data(last_bot_message=msg.message_id)
 
 
 @dp.message(PostStates.wait_name)
@@ -288,10 +308,12 @@ async def process_product_name(message: Message, state: FSMContext) -> None:
     await state.update_data(product_name=message.text)
     msg = await message.answer("Название товара успешно сохранено! "
                                "Теперь загрузите фото товара.")
-    if user_id in last_bot_message:
-        await bot.delete_message(chat_id=message.chat.id, message_id=last_bot_message[user_id])
+    data = await state.get_data()
+    previous_message_id = data.get('last_bot_message')
+    if previous_message_id:
+        await bot.delete_message(chat_id=message.chat.id, message_id=previous_message_id)
     await state.set_state(PostStates.wait_photo)
-    last_bot_message[user_id] = msg.message_id
+    await state.update_data(last_bot_message=msg.message_id)
 
 
 @dp.message(PostStates.wait_photo, F.content_type == 'photo')
@@ -309,32 +331,38 @@ async def process_product_photo(message: Message, state: FSMContext) -> None:
     await state.update_data(product_photo=unique_filename)
     user_data = await state.get_data()
     product_name = user_data.get('product_name')
-    if user_id in last_bot_message:
-        await bot.delete_message(chat_id=message.chat.id, message_id=last_bot_message[user_id])
+    data = await state.get_data()
+    previous_message_id = data.get('last_bot_message')
+    if previous_message_id:
+        await bot.delete_message(chat_id=message.chat.id, message_id=previous_message_id)
 
     msg = await message.answer(f"Фото товара '{product_name}' успешно сохранено! "
                                f"Теперь укажите стоимость товара на маркетплейсе в данный момент")
     await state.set_state(PostStates.wait_price)
-    last_bot_message[user_id] = msg.message_id
+    await state.update_data(last_bot_message=msg.message_id)
 
 
 @dp.message(PostStates.wait_photo)
-async def process_invalid_photo(message: Message) -> None:
+async def process_invalid_photo(message: Message, state: FSMContext) -> None:
     user_id = message.from_user.id
-    if user_id in last_bot_message:
-        await bot.delete_message(chat_id=message.chat.id, message_id=last_bot_message[user_id])
+    data = await state.get_data()
+    previous_message_id = data.get('last_bot_message')
+    if previous_message_id:
+        await bot.delete_message(chat_id=message.chat.id, message_id=previous_message_id)
     msg = await message.answer("Пожалуйста, отправьте фотографию товара.")
-    last_bot_message[user_id] = msg.message_id
+    await state.update_data(last_bot_message=msg.message_id)
 
 
 @dp.message(PostStates.wait_price)
 async def process_product_price(message: Message, state: FSMContext) -> None:
     user_id = message.from_user.id
-    if user_id in last_bot_message:
-        await bot.delete_message(chat_id=message.chat.id, message_id=last_bot_message[user_id])
+    data = await state.get_data()
+    previous_message_id = data.get('last_bot_message')
+    if previous_message_id:
+        await bot.delete_message(chat_id=message.chat.id, message_id=previous_message_id)
     if not message.text.isdigit():
         msg = await message.answer("Цена должна быть числом. Попробуйте ещё раз.")
-        last_bot_message[user_id] = msg.message_id
+        await state.update_data(last_bot_message=msg.message_id)
         return
     await state.update_data(product_price=message.text)
     # Подтверждение публикации
@@ -343,17 +371,19 @@ async def process_product_price(message: Message, state: FSMContext) -> None:
                                "реальная и отличаться от стоимости "
                                "на маркетплейсе минимум на 15%")
     await state.set_state(PostStates.wait_discount)
-    last_bot_message[user_id] = msg.message_id
+    await state.update_data(last_bot_message=msg.message_id)
 
 
 @dp.message(PostStates.wait_discount)
 async def process_product_discount(message: Message, state: FSMContext) -> None:
     user_id = message.from_user.id
-    if user_id in last_bot_message:
-        await bot.delete_message(chat_id=message.chat.id, message_id=last_bot_message[user_id])
+    data = await state.get_data()
+    previous_message_id = data.get('last_bot_message')
+    if previous_message_id:
+        await bot.delete_message(chat_id=message.chat.id, message_id=previous_message_id)
     if not message.text.isdigit():
         msg = await message.answer("Скидка(Кэшбек) должна быть числом. Попробуйте ещё раз.")
-        last_bot_message[user_id] = msg.message_id
+        await state.update_data(last_bot_message=msg.message_id)
         return
     await state.update_data(product_discount=message.text)
     # Подтверждение публикации
@@ -362,7 +392,7 @@ async def process_product_discount(message: Message, state: FSMContext) -> None:
                                reply_markup=await marketpalce_choice()
                                )
     await state.set_state(PostStates.wait_marketplace)
-    last_bot_message[user_id] = msg.message_id
+    await state.update_data(last_bot_message=msg.message_id)
 
 
 @dp.message(F.text.in_({'WB', 'OZON', 'Пропустить'}), PostStates.wait_marketplace)
@@ -370,8 +400,10 @@ async def marketplace(message: Message, state: FSMContext) -> None:
     # Обрабатываем текст, который был отправлен пользователем
     text = message.text
     user_id = message.from_user.id
-    if user_id in last_bot_message:
-        await bot.delete_message(chat_id=message.chat.id, message_id=last_bot_message[user_id])
+    data = await state.get_data()
+    previous_message_id = data.get('last_bot_message')
+    if previous_message_id:
+        await bot.delete_message(chat_id=message.chat.id, message_id=previous_message_id)
     if text == 'Пропустить':
         text = ' '
     await state.update_data(product_marketplace=text)
@@ -380,29 +412,33 @@ async def marketplace(message: Message, state: FSMContext) -> None:
                                "кнопке 'узнать условия'"
                                )
     await state.set_state(PostStates.wait_url_account)
-    last_bot_message[user_id] = msg.message_id
+    await state.update_data(last_bot_message=msg.message_id)
 
 
 @dp.message(PostStates.wait_url_account)
 async def account_url(message: Message, state: FSMContext) -> None:
     user_id = message.from_user.id
-    if user_id in last_bot_message:
-        await bot.delete_message(chat_id=message.chat.id, message_id=last_bot_message[user_id])
+    data = await state.get_data()
+    previous_message_id = data.get('last_bot_message')
+    if previous_message_id:
+        await bot.delete_message(chat_id=message.chat.id, message_id=previous_message_id)
     await state.update_data(account_url=message.text)
     # Подтверждение публикации
     msg = await bot.send_message(user_id, "❗️Выберите необходимый канал для публикации",
                                  reply_markup=await channel_choice()
                                  )
     await state.set_state(PostStates.wait_channel)
-    last_bot_message[user_id] = msg.message_id
+    await state.update_data(last_bot_message=msg.message_id)
 
 
 @dp.callback_query(lambda c: c.data == 'buyer', PostStates.wait_channel)
 async def choice_group(callback_query: CallbackQuery, state: FSMContext) -> None:
     data = callback_query.data
     user_id = callback_query.from_user.id
-    if user_id in last_bot_message:
-        await bot.edit_message_text(chat_id=user_id, message_id=last_bot_message[user_id],
+    data = await state.get_data()
+    previous_message_id = data.get('last_bot_message')
+    if previous_message_id:
+        await bot.edit_message_text(chat_id=user_id, message_id=previous_message_id,
                                     text=f'💢 Выбрана публикация на канал {callback_query.message.text}')
     await state.update_data(channel=callback_query.message.text)
     user_data = await state.get_data()
@@ -429,7 +465,7 @@ async def choice_group(callback_query: CallbackQuery, state: FSMContext) -> None
                                                "Обязательно проверьте правильность заполненных полей и ссылок!\n\n"
                                                "Для окончания публикации нажмите кнопку ниже!",
                                  reply_markup=await finish_public())
-    last_bot_message[user_id] = msg.message_id
+    await state.update_data(last_bot_message=msg.message_id)
 
 
 @dp.callback_query(lambda c: c.data == 'finish_public', PostStates.wait_channel)
@@ -441,11 +477,13 @@ async def finish(callback_query: CallbackQuery, state: FSMContext) -> None:
     """
     user_id = callback_query.from_user.id
     user_data = await state.get_data()
-    if user_id in last_bot_message:
-        await bot.delete_message(chat_id=user_id, message_id=last_bot_message[user_id])
+    data = await state.get_data()
+    previous_message_id = data.get('last_bot_message')
+    if previous_message_id:
+        await bot.delete_message(chat_id=callback_query.message.chat.id, message_id=previous_message_id)
 
     msg = await bot.send_message(user_id, text='Успешно! Ваше объявление опубликовано!')
-    last_bot_message[user_id] = msg.message_id
+    await state.update_data(last_bot_message=msg.message_id)
     await state.clear()
 
 
