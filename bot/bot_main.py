@@ -18,6 +18,7 @@ from repository import get_user_by_telegram_id, get_task_by_id, add_task
 import subprocess
 import logging
 import time
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 MEDIA_DIR = 'media'
@@ -460,6 +461,8 @@ async def choice_group(callback_query: CallbackQuery, state: FSMContext) -> None
                f"Цена: {product_price} р.\n"
                f"Цена для вас: {int(product_price) - int(product_discount)} р.\n"
                f"Товар: {product_name}")
+    caption = caption + f"\nМаркетплейс - {product_marketplace}" \
+        if product_marketplace != 'Пропустить' else caption
     file_path = os.path.join(os.getcwd(), MEDIA_DIR, product_photo_path)
     if not os.path.isfile(file_path):
         raise FileNotFoundError(f"Файл по пути {file_path} не найден")
