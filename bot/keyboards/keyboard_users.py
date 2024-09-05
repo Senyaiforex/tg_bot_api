@@ -3,16 +3,28 @@ from re import search
 from aiogram.types import (ReplyKeyboardMarkup, KeyboardButton,
                            InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo)
 
+from bot.bot_main import public
+
 group_url = 'https://t.me/Buyer_Marketplace'
 manager_tg = 'https://t.me/Broker_113'
 
+async def start_reply_keyboard():
+    catalog = [KeyboardButton(text="Каталог")]
+    menu = [KeyboardButton(text="Меню")]
+    public_post = [KeyboardButton(text="Опубликовать пост")]
+    keyboard = ReplyKeyboardMarkup(keyboard=[
+            catalog,
+            menu,
+            public_post,
+    ], resize_keyboard=True, is_persistent=True)
+    return keyboard
 
 async def start_keyboard():
     start_but = [InlineKeyboardButton(text='Подписаться', url=group_url)]
     keyboard = InlineKeyboardMarkup(inline_keyboard=[start_but])
     return keyboard
 
-async def menu_keyboard(url: str):
+async def menu_keyboard():
     """
     Функция создаёт кнопки для меню
     :param url: str
@@ -24,9 +36,7 @@ async def menu_keyboard(url: str):
                                     callback_data='catalog')]
     search_prod = [InlineKeyboardButton(text='🔍 Поиск товара', callback_data='search')]
     group = [InlineKeyboardButton(text='👥 Группа', url=group_url)]
-    webapp = [InlineKeyboardButton(text='Приложение',
-                                   web_app=WebAppInfo(url=url))]
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[post, catalog, search_prod, group, webapp])
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[post, catalog, search_prod, group])
     return keyboard
 
 

@@ -12,12 +12,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from utils.bot_utils import *
 import functools
 from keyboards import *
-from database import async_session, Base
+from database import async_session
 from repository import create_user_tg
-from aiohttp import web
 from repository import get_user_by_telegram_id, get_task_by_id, add_task
 import subprocess
-
+import logging
+import time
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 MEDIA_DIR = 'media'
 
 
@@ -37,7 +39,9 @@ web_app_url = 'https://tg-botttt.netlify.app'
 
 
 async def is_user_subscribed(user_id: int, channel_id: str) -> bool:
+    start_time = time.time()
     member = await bot.get_chat_member(chat_id=channel_id, user_id=user_id)
+    logger.info(f'{start_time - time.time()}')
     return member.status in ["member", "administrator", "creator"]
 
 
@@ -82,9 +86,10 @@ async def start(message: Message, command: CommandObject) -> None:
         inviter_id = int(args.split("_")[2])
     if await is_user_subscribed(user_id, CHANNEL_ID):
         # Если пользователь подписан, показываем меню
-        text = ("Добро пожаловать!\n"
-                "Спасибо за подписку на наш канал! Теперь вы можете пользоваться ботом.")
-        await bot.send_photo(user_id, caption=text, photo=picture, parse_mode='Markdown')
+        text = "Добро пожаловать!\n"
+        keyboard_reply = await start_reply_keyboard()
+        await bot.send_photo(user_id, caption=text, photo=picture, parse_mode='Markdown',
+                             reply_markup=keyboard_reply)
     else:
         # Если пользователь не подписан, показываем сообщение с просьбой подписаться
         text = ("Добро пожаловать!\n"
@@ -124,18 +129,17 @@ async def webapp(message: Message, command: CommandObject, state: FSMContext) ->
     await message.delete()
 
 
-@dp.message(Command("menu"))
+@dp.message(F.text == 'Меню')
 @subscribed
-async def menu(message: Message, command: CommandObject, state: FSMContext) -> None:
+async def menu(message: Message, state: FSMContext) -> None:
     """
     Функция отображения меню
     :param message:
-    :param command:
     :return:
     """
     picture = FSInputFile('static/menu_pic.jpg')
     user_id = message.from_user.id
-    keyboard = await menu_keyboard(web_app_url)
+    keyboard = await menu_keyboard()
     data = await state.get_data()
     previous_message_id = data.get('last_bot_message')
     if previous_message_id:
@@ -145,13 +149,12 @@ async def menu(message: Message, command: CommandObject, state: FSMContext) -> N
     await message.delete()
 
 
-@dp.message(Command("public"))
+@dp.message(F.text == 'Опубликовать пост')
 @subscribed
-async def public(message: Message, command: CommandObject, state: FSMContext) -> None:
+async def public(message: Message, state: FSMContext) -> None:
     """
     Функция обработки команды для размещения поста
     :param message:
-    :param command:
     :return:
     """
     text = ("По вопросам условий размещения "
@@ -169,13 +172,12 @@ async def public(message: Message, command: CommandObject, state: FSMContext) ->
     await message.delete()
 
 
-@dp.message(Command("catalog"))
+@dp.message(F.text == 'Каталог')
 @subscribed
-async def catalog(message: Message, command: CommandObject, state: FSMContext) -> None:
+async def catalog(message: Message, state: FSMContext) -> None:
     """
     Функция отображения каталога товаров
     :param message:
-    :param command:
     :return:
     """
     picture = FSInputFile('static/catalog_pic.jpg')
@@ -199,7 +201,7 @@ async def back_to_menu(callback_query: CallbackQuery, state: FSMContext) -> None
     """
     user_id = callback_query.from_user.id
     picture = FSInputFile('static/menu_pic.jpg')
-    keyboard = await menu_keyboard(web_app_url)
+    keyboard = await menu_keyboard()
     data = await state.get_data()
     previous_message_id = data.get('last_bot_message')
     if previous_message_id:

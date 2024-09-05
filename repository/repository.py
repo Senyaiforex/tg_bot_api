@@ -68,6 +68,25 @@ async def add_task(user: User, task: Task, session):
         await session.commit()
 
 
+async def create_task(url: str, description: str, type_task: str, session) -> bool:
+    """
+    ��ункция для создания новой задачи в базе данных
+    :param url:
+    :param description:
+    :param type_task:
+    :return:
+    """
+    new_task = Task(
+            url=url,
+            description=description,
+            type_task=type_task,
+            is_completed=False,
+    )
+    await session.add(new_task)
+    await session.commit()
+    return True
+
+
 async def get_tasks_by_type(type_task: str, session) -> list[Task]:
     result = await session.execute(
             select(Task)

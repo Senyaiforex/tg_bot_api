@@ -47,10 +47,11 @@ async def select_type_task():
     :return:
     """
     menu_inline_buttons = [
-            [InlineKeyboardButton(text='Подписка на канал(группу)', callback_data='subscribe_channel'),
-             InlineKeyboardButton(text='Просмотр видео', callback_data='watch_video')],
-            [InlineKeyboardButton(text='Поставить лайк/добавить в избранное', callback_data='like'),
-             InlineKeyboardButton(text='Оставить комментарий', callback_data='comment')],
+            [InlineKeyboardButton(text='Подписка на канал(группу)', callback_data='task_subscribe'),
+             InlineKeyboardButton(text='Просмотр видео', callback_data='task_watch')],
+            [InlineKeyboardButton(text='Поставить лайк', callback_data='task_like'),
+             InlineKeyboardButton(text='Добавить в избранное', callback_data='task_save')],
+            [InlineKeyboardButton(text='Оставить комментарий', callback_data='task_comment')],
     ]
     keyboard = InlineKeyboardMarkup(
             inline_keyboard=menu_inline_buttons,

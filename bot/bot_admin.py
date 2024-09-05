@@ -11,7 +11,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from keyboards import *
 import functools
 from database import async_session, Base
-from repository import create_user_tg
+from repository import create_user_tg, create_task
+
+
+async def get_async_session() -> AsyncSession:
+    async with async_session() as session:
+        yield session
+
 
 superuser_ids = [718586333, 98723123312]
 admin_ids = [718586333, 987654321]
@@ -32,14 +38,20 @@ message_no_access = ("Здравствуйте! У вас недостаточн
                      f"Используйте бот {CHANNEL_ID}")
 
 dict_keyboards = {
-        '🗒Добавить задание': ('Выберите тип задания, которое хотите добавить', select_type_task()),
-        '📉Статистика': ('Выберите дальнейшее действие', inline_statistics()),
+        '🗒Добавить задание': ('Выберите тип задания, которое хотите добавить', select_type_task),
+        '📉Статистика': ('Выберите дальнейшее действие', inline_statistics),
         '➕Добавить пост': '',
         '🗑Удалить пост': '',
         '🚫Блокировать': '',
         '👥Добавить администратора': '',
-        '💰Пул': ('Выберите дальнейшее действие', pull_inline()),
+        '💰Пул': ('Выберите дальнейшее действие', pull_inline),
 }
+
+
+class TaskStates(StatesGroup):
+    wait_descript = State()
+    wait_url = State()
+    confirmation = State()
 
 
 async def get_async_session() -> AsyncSession:
@@ -94,10 +106,67 @@ async def inline_buttons_menu(message: Message, state: FSMContext) -> None:
     :param message:
     :param state:
     :return:
+
     """
-    keyboard = await dict_keyboards[message.text][1]
+    data = await state.get_data()
+    previous_message_id = data.get('last_bot_message')
+    if previous_message_id:
+        await bot.delete_message(chat_id=message.chat.id, message_id=previous_message_id)
+    text, func = dict_keyboards[message.text]
+    keyboard = await func()
     user_id = message.from_user.id
-    await bot.send_message(chat_id=user_id, text=dict_keyboards[message.text][0], reply_markup=keyboard)
+    msg = await bot.send_message(chat_id=user_id, text=dict_keyboards[message.text][0], reply_markup=keyboard)
+    await state.update_data(last_bot_message=msg.message_id)
+
+
+@dp.callback_query(lambda c: c.data.startswith('task'))
+async def add_task(callback_query: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    previous_message_id = data.get('last_bot_message')
+    if previous_message_id:
+        await bot.delete_message(chat_id=callback_query.message.chat.id, message_id=previous_message_id)
+    data = callback_query.data
+    user_id = callback_query.from_user.id
+    type_task = data.split('_')[1]
+    msg = await bot.send_message(chat_id=user_id, text='Введите описание задания:')
+    await state.set_state(TaskStates.wait_url)
+    await state.update_data(last_bot_message=msg.message_id)
+    await state.update_data(type_task=type_task)
+
+
+@dp.message(TaskStates.wait_url)
+async def wait_url(message: Message, state: FSMContext) -> None:
+    data = await state.get_data()
+    description = message.text
+    previous_message_id = data.get('last_bot_message')
+    user_id = message.from_user.id
+    if previous_message_id:
+        await bot.delete_message(chat_id=user_id, message_id=previous_message_id)
+    msg = await bot.send_message(chat_id=user_id, text='Введите ссылку на задание в виде\n '
+                                                       'https://t.me/Buyer_Marketplace')
+    await state.set_state(TaskStates.confirmation)
+    await state.update_data(last_bot_message=msg.message_id)
+    await state.update_data(description=description)
+
+
+@dp.message(TaskStates.confirmation)
+async def wait_url(message: Message, state: FSMContext) -> None:
+    data = await state.get_data()
+    url = message.text
+    previous_message_id = data.get('last_bot_message')
+    user_id = message.from_user.id
+    if previous_message_id:
+        await bot.delete_message(chat_id=user_id, message_id=previous_message_id)
+    msg = await bot.send_message(chat_id=user_id, text='Задание успешно добавлено!')
+    await state.set_state(TaskStates.wait_url)
+    await state.update_data(last_bot_message=msg.message_id)
+    await state.update_data(url=url)
+    data_new = await state.get_data()
+    print(data_new.get('url'), data_new.get('description'), data_new.get('type_task'))
+    async for session in get_async_session():
+        await create_task(data_new.get('url'), data_new.get('description'),
+                          data_new.get('type_task'), session)
+    await state.clear()
 
 
 async def main():
