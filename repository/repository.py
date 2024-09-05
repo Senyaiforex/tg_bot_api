@@ -68,7 +68,7 @@ async def add_task(user: User, task: Task, session):
         await session.commit()
 
 
-async def create_task(url: str, description: str, type_task: str, session) -> bool:
+async def create_task(url: str, description: str, type_task: str, session: async_session) -> bool:
     """
     ��ункция для создания новой задачи в базе данных
     :param url:
@@ -80,9 +80,8 @@ async def create_task(url: str, description: str, type_task: str, session) -> bo
             url=url,
             description=description,
             type_task=type_task,
-            is_completed=False,
     )
-    await session.add(new_task)
+    session.add(new_task)
     await session.commit()
     return True
 
