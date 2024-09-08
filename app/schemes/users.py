@@ -1,6 +1,6 @@
 from typing import Optional, List
 from datetime import date, datetime
-from .tasks import TaskByUser
+from .tasks import TaskByUser, TaskOut
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -58,7 +58,7 @@ class Friend(BaseModel):
 
 class UserOut(BaseUser):
     friends: Optional[List[Friend]] = Field(default=[], description='Друзья')
-    tasks: Optional[List[TaskByUser]] = Field(default=[], description='Задачи')
+    tasks: Optional[List[TaskOut]] = Field(default=[], description='Задачи')
 
     class Config:
         from_orm = True

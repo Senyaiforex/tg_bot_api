@@ -9,7 +9,7 @@ COPY ./bot/requirements.txt /bot/requirements.txt
 COPY ./bot /bot
 
 
-# Устанавливаем зависимости
+RUN pip install --upgrade pip
 RUN pip install -r /bot/requirements.txt
 
 # Создаем символические ссылки на общие модули

@@ -7,8 +7,7 @@ WORKDIR /app
 # Копируем файлы, относящиеся к FastAPI
 COPY ./app/requirements.txt /app/requirements.txt
 COPY ./app /app
-
-# Устанавливаем зависимости
+RUN pip install --upgrade pip
 RUN pip install -r /app/requirements.txt
 
 # Создаем символические ссылки на общие модули

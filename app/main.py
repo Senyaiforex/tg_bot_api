@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database import engine, async_session, Base
 from schemes import UserIn, UserOut, DeleteUser, ChangeCoins, ChangePharmd, HistoryTransactionOut, \
     BaseUser, TaskOut
+from utils.app_utils.utils import categorize_tasks
 
 
 @asynccontextmanager
@@ -158,9 +159,8 @@ async def get_task_status(id_telegram: Annotated[int, Path(description="Telegram
     return JSONResponse(content={'complete': task_complete})
 
 
-@app.get('/api/tasks/{type_task}', response_model=list[TaskOut])
-async def get_tasks(type_task: Annotated[str, Path(description="Тип задачи")],
-                    session=Depends(get_async_session)):
+@app.get('/api/tasks')
+async def get_tasks(session=Depends(get_async_session)):
     """
     • Описание: Метод для получения всех задач нужного типа \n
     • Параметры:\n
@@ -168,8 +168,9 @@ async def get_tasks(type_task: Annotated[str, Path(description="Тип зада�
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий все задачи нужного типа\n
     """
-    tasks = await get_tasks_by_type(type_task, session)
-    return tasks
+    tasks = await get_all_tasks(session)
+    cat_tasks = await categorize_tasks(tasks)
+    return JSONResponse(content= {'categories': cat_tasks})
 
 
 @app.post('/api/create_user', response_model=BaseUser)

@@ -10,7 +10,7 @@ from aiogram.fsm.state import State, StatesGroup
 from sqlalchemy.ext.asyncio import AsyncSession
 from keyboards import *
 import functools
-from database import async_session, Base
+from database import async_session
 from repository import create_user_tg, create_task
 
 
@@ -52,12 +52,6 @@ class TaskStates(StatesGroup):
     wait_descript = State()
     wait_url = State()
     confirmation = State()
-
-
-async def get_async_session() -> AsyncSession:
-    async with async_session() as session:
-        yield session
-
 
 bot = Bot(BOT_TOKEN)
 storage = MemoryStorage()
@@ -108,6 +102,8 @@ async def inline_buttons_menu(message: Message, state: FSMContext) -> None:
     :return:
 
     """
+    message_id = message.message_id
+    await bot.delete_message(chat_id=message.chat.id, message_id=message_id)
     data = await state.get_data()
     previous_message_id = data.get('last_bot_message')
     if previous_message_id:
@@ -142,8 +138,8 @@ async def wait_url(message: Message, state: FSMContext) -> None:
     user_id = message.from_user.id
     if previous_message_id:
         await bot.delete_message(chat_id=user_id, message_id=previous_message_id)
-    msg = await bot.send_message(chat_id=user_id, text='Введите ссылку на задание в виде\n '
-                                                       'https://t.me/Buyer_Marketplace')
+    msg = await bot.send_message(chat_id=user_id, text='Отправьте ссылку на задание в виде\n '
+                                                       'https://example/product/one.com')
     await state.set_state(TaskStates.confirmation)
     await state.update_data(last_bot_message=msg.message_id)
     await state.update_data(description=description)
@@ -157,12 +153,17 @@ async def wait_url(message: Message, state: FSMContext) -> None:
     user_id = message.from_user.id
     if previous_message_id:
         await bot.delete_message(chat_id=user_id, message_id=previous_message_id)
+    if 'http' not in url:
+        msg = await bot.send_message(chat_id=user_id, text='Пожалуйста, отправьте '
+                                                           'ссылку на задание в следующем формате:\n'
+                                                           'https://example/product/one.com')
+        await state.update_data(last_bot_message=msg.message_id)
+        return
     msg = await bot.send_message(chat_id=user_id, text='Задание успешно добавлено!')
     await state.set_state(TaskStates.wait_url)
     await state.update_data(last_bot_message=msg.message_id)
     await state.update_data(url=url)
     data_new = await state.get_data()
-    print(data_new.get('url'), data_new.get('description'), data_new.get('type_task'))
     async for session in get_async_session():
         await create_task(data_new.get('url'), data_new.get('description'),
                           data_new.get('type_task'), session)

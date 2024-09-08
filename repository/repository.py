@@ -95,6 +95,14 @@ async def get_tasks_by_type(type_task: str, session) -> list[Task]:
     return tasks
 
 
+async def get_all_tasks(session) -> list[Task]:
+    result = await session.execute(
+            select(Task)
+    )
+    tasks = result.scalars().all()
+    return tasks
+
+
 async def change_coins_by_id(
         id_telegram: int,
         amount: int,

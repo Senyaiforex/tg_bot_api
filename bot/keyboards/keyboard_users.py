@@ -3,7 +3,6 @@ from re import search
 from aiogram.types import (ReplyKeyboardMarkup, KeyboardButton,
                            InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo)
 
-from bot.bot_main import public
 
 group_url = 'https://t.me/Buyer_Marketplace'
 manager_tg = 'https://t.me/Broker_113'
