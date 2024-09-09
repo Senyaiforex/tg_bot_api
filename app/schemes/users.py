@@ -42,10 +42,6 @@ class BaseUser(BaseModel):
     registration_date: date | str = Field(
             description='Дата регистрации',
     )
-    spinners: int = Field(
-            default=0,
-            description='Количество спиннеров для рулетки'
-    )
     active: bool = Field(
             description='Активность пользователя'
     )
@@ -64,7 +60,10 @@ class Friend(BaseModel):
 class UserOut(BaseUser):
     friends: Optional[List[Friend]] = Field(default=[], description='Друзья')
     tasks: Optional[List[TaskOut]] = Field(default=[], description='Задачи')
-
+    spinners: int = Field(
+            default=0,
+            description='Количество спиннеров для рулетки'
+    )
     class Config:
         from_orm = True
         related_fields = {'friends': {'exclude': ['id_telegram', 'count_pharmd',
