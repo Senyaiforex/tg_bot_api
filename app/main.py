@@ -10,7 +10,7 @@ import uvicorn
 from sqlalchemy.ext.asyncio import AsyncSession
 from database import engine, async_session, Base
 from schemes import UserIn, UserOut, DeleteUser, ChangeCoins, ChangePharmd, HistoryTransactionOut, \
-    BaseUser, TaskOut
+    BaseUser, TaskOut, ChangeSpinners
 from utils.app_utils.utils import categorize_tasks
 
 
@@ -170,7 +170,7 @@ async def get_tasks(session=Depends(get_async_session)):
     """
     tasks = await get_all_tasks(session)
     cat_tasks = await categorize_tasks(tasks)
-    return JSONResponse(content= {'categories': cat_tasks})
+    return JSONResponse(content={'categories': cat_tasks})
 
 
 @app.post('/api/create_user', response_model=BaseUser)
@@ -213,6 +213,20 @@ async def change_pharmd(id_telegram: int, data_new: ChangePharmd,
     """
     user = await change_pharmd_by_id(id_telegram, data_new.amount, data_new.add, session)
     return JSONResponse(content={'id_telegram': f'{user.id_telegram}', 'count_pharmd': f'{user.count_pharmd}'})
+
+
+@app.patch('/api/change_spinners/{id_telegram}')
+async def change_spinners(id_telegram: int, data_new: ChangeSpinners,
+                        session: AsyncSession = Depends(get_async_session)):
+    """
+    • Описание: Изменяет количество спиннеров у пользователя.\n
+    • Параметры:\n
+        ◦ id_telegram, amount, add (тело запроса, схема ChangeSpinners): Данные для изменения спиннеров.\n
+    • Ответ:\n
+        ◦ 200 OK: JSON объект, содержащий обновленную информацию о количестве спиннеров пользователя.\n
+    """
+    user = await change_spinners_by_id(id_telegram, data_new.amount, data_new.add, session)
+    return JSONResponse(content={'id_telegram': f'{user.id_telegram}', 'spinners': f'{user.spinners}'})
 
 
 @app.delete('/api/delete_user')

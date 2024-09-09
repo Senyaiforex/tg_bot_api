@@ -17,6 +17,7 @@ from repository import get_user_by_telegram_id, get_task_by_id, add_task
 import subprocess
 import logging
 import time
+from multiprocessing import Process
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

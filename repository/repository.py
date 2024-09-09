@@ -156,6 +156,32 @@ async def change_pharmd_by_id(
     return user
 
 
+async def change_spinners_by_id(
+        id_telegram: int,
+        amount: int,
+        add: bool,
+        session: async_session
+) -> User:
+    """
+    Функция для изменения количества спиннеров у пользователя
+    по его id_telegram
+    :param telegram_id:
+    :param amount:
+    :param add:
+    :param session:
+    :return:
+    """
+    user = await get_user_by_telegram_id(id_telegram, session)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    if add:
+        user.spinners += amount
+    else:
+        user.spinners -= amount
+    await session.commit()
+    return user
+
+
 async def create_user_tg(id_telegram: int, username: str, session: async_session) -> None:
     """
     Функция для создания нового пользователя в базе данных из телеграмма.

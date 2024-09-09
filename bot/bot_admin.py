@@ -13,7 +13,6 @@ import functools
 from database import async_session
 from repository import create_user_tg, create_task
 
-
 async def get_async_session() -> AsyncSession:
     async with async_session() as session:
         yield session

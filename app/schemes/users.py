@@ -1,3 +1,4 @@
+from email.policy import default
 from typing import Optional, List
 from datetime import date, datetime
 from .tasks import TaskByUser, TaskOut
@@ -40,6 +41,10 @@ class BaseUser(BaseModel):
     )
     registration_date: date | str = Field(
             description='Дата регистрации',
+    )
+    spinners: int = Field(
+            default=0,
+            description='Количество спиннеров для рулетки'
     )
     active: bool = Field(
             description='Активность пользователя'

@@ -4,6 +4,9 @@ class ChangeCoins(BaseModel):
     amount: int
     add: bool
 
+class ChangeSpinners(BaseModel):
+    amount: int
+    add: bool
 
 class ChangePharmd(BaseModel):
     amount: int

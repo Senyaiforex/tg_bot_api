@@ -2,7 +2,7 @@ from datetime import datetime
 from sqlalchemy import Column, String, Integer, Table, ForeignKey, Date, DateTime, Boolean
 from sqlalchemy.orm import relationship
 from database import Base, async_session
-
+from .posts import Post
 friends = Table(
     'friends', Base.metadata,
     Column('friend1_id_telegram', ForeignKey('users.id_telegram'), primary_key=True),
@@ -31,7 +31,9 @@ class User(Base):
     sale_count = Column(Integer, default=0)
     registration_date = Column(Date, default=datetime.utcnow)
     history_transactions = relationship("HistoryTransaction", backref='user')
+    posts = relationship("Post", backref='user')
     active = Column(Boolean, default=1)
+    spinners = Column(Integer, default=0, comment='Количество спиннеров для рулетки')
     tasks = relationship("Task", secondary=users_tasks, back_populates='users', lazy='joined')
     friends = relationship(
             'User',
