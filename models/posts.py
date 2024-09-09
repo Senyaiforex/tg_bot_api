@@ -15,5 +15,5 @@ class Post(Base):
     price = Column(Float, comment='Цена на товар')
     discounted_price = Column(Float, comment='Цена со скидкой')
     discount = Column(Float, comment='Скидка')
-    user = Column(Integer, ForeignKey('users.id_telegram'))
+    user_telegram = Column(Integer, ForeignKey('users.id_telegram'))
     active = Column(Boolean)
