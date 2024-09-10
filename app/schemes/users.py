@@ -60,6 +60,7 @@ class Friend(BaseModel):
 class UserOut(BaseUser):
     friends: Optional[List[Friend]] = Field(default=[], description='Друзья')
     tasks: Optional[List[TaskOut]] = Field(default=[], description='Задачи')
+    active: bool = Field(default=True, description='Активность')
     spinners: int = Field(
             default=0,
             description='Количество спиннеров для рулетки'

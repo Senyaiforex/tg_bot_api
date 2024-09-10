@@ -16,10 +16,10 @@ async def menu_admin(superuser: bool):
             [KeyboardButton(text='🚫Блокировать')],
     ]
     if superuser:
-        menu_buttons.append([KeyboardButton(text='👥Добавить администратора')])
+        menu_buttons[2].append(KeyboardButton(text='👥Добавить администратора'))
         menu_buttons.append([KeyboardButton(text='💰Пул')])
     keyboard = ReplyKeyboardMarkup(
-            keyboard=menu_buttons,
+            keyboard=menu_buttons, is_persistent=True
     )
     return keyboard
 
@@ -30,10 +30,37 @@ async def inline_statistics():
     :return:
     """
     menu_inline_buttons = [
-            [InlineKeyboardButton(text='Все пользователи', callback_data='all_info_users'),
+            [InlineKeyboardButton(text='Статистика по пользователям', callback_data='all_info_users'),
              InlineKeyboardButton(text='Информация о пользователе', callback_data='info_user')],
-            [InlineKeyboardButton(text='Транзакции пользователя', callback_data='transactions_user'),
-             InlineKeyboardButton(text='Статистика по постам', callback_data='info_posts')],
+             [InlineKeyboardButton(text='Статистика по постам', callback_data='info_posts')],
+    ]
+    keyboard = InlineKeyboardMarkup(
+            inline_keyboard=menu_inline_buttons,
+    )
+    return keyboard
+
+
+async def user_info_keyboard(telegram_id):
+    """
+    Создаёт inline кнопки для просмотра статистики по отдельному пользователю
+    :return:
+    """
+    menu_inline_buttons = [
+            [InlineKeyboardButton(text='Все транзакции', callback_data=f'transactions_{telegram_id}'),
+             InlineKeyboardButton(text='Друзья', callback_data=f'friends_{telegram_id}')]
+    ]
+    keyboard = InlineKeyboardMarkup(
+            inline_keyboard=menu_inline_buttons,
+    )
+    return keyboard
+
+async def pull_keyboard():
+    """
+    Создаёт кнопку для создания пула
+    :return:
+    """
+    menu_inline_buttons = [
+            [InlineKeyboardButton(text='Установить пулл', callback_data='set_pull')]
     ]
     keyboard = InlineKeyboardMarkup(
             inline_keyboard=menu_inline_buttons,

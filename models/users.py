@@ -33,8 +33,10 @@ class User(Base):
     history_transactions = relationship("HistoryTransaction", backref='user')
     posts = relationship("Post", backref='user')
     active = Column(Boolean, default=1)
+    admin = Column(Boolean, default=0)
+    superuser = Column(Boolean, default=0)
     spinners = Column(Integer, default=0, comment='Количество спиннеров для рулетки')
-    tasks = relationship("Task", secondary=users_tasks, back_populates='users', lazy='joined')
+    tasks = relationship("Task", secondary=users_tasks, back_populates='users')
     friends = relationship(
             'User',
             secondary=friends,

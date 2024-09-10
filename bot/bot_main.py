@@ -12,7 +12,7 @@ from utils.bot_utils import *
 import functools
 from keyboards import *
 from database import async_session
-from repository import create_user_tg
+from repository import create_user_tg, get_user_tg
 from repository import get_user_by_telegram_id, get_task_by_id, add_task
 import subprocess
 import logging
@@ -54,6 +54,11 @@ def subscribed(func):
             await message.answer("Чтобы пользоваться ботом, необходимо подписаться на канал: @Buyer_Marketplace\n"
                                  "После подписки на канал Вы можете снова использовать бот, нажимая на любые кнопки в меню.")
             return
+        async for session in get_async_session():
+            user = await get_user_tg(user_id, session)
+            if user and user.active == False:
+                await message.answer("Вы заблокированы администратором")
+                return
         return await func(message, *args, **kwargs)
 
     return wrapper

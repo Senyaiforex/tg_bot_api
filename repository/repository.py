@@ -1,11 +1,11 @@
 from typing import List, Dict, Union
-
+from sqlalchemy import select, func
 from fastapi import HTTPException
 from database import async_session
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
-from models import User, HistoryTransaction, Task
-
+from models import User, HistoryTransaction, Task, Post, Pull
+from datetime import date
 
 async def get_user_by_telegram_id(telegram_id: int, session: async_session) -> User:
     """
@@ -16,13 +16,70 @@ async def get_user_by_telegram_id(telegram_id: int, session: async_session) -> U
     """
     result = await session.execute(
             select(User)
-            .options(joinedload(User.friends))  # Подгружаем друзей вместе с пользователем
+            .options(joinedload(User.friends))
+            .options(joinedload(User.tasks))
             .where(User.id_telegram == telegram_id)
     )
     user = result.scalars().first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
+
+async def get_user_by_username(username: str, session: async_session) -> User:
+    """
+    Функция дял получения пользователя из базы данных по id_telegram
+    :param username:
+    :param session:
+    :return:
+    """
+    result = await session.execute(
+            select(User)
+            .options(joinedload(User.friends))
+            .options(joinedload(User.tasks))
+            .options(joinedload(User.history_transactions))
+            .options(joinedload(User.posts))
+            .where(User.user_name == username)
+    )
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+async def get_user_tg(telegram_id: int, session: async_session) -> User:
+    """
+    Функция дял получения пользователя из базы данных по id_telegram
+    :param telegram_id:
+    :param session:
+    :return:
+    """
+    result = await session.execute(
+            select(User)
+            .where(User.id_telegram == telegram_id)
+    )
+    user = result.scalars().first()
+    return user
+
+
+async def create_user_admin(telegram_id: int, username: str, session: async_session) -> User:
+    """
+    Функция для создания нового пользователя в базе данных
+    :param user:
+    :param session:
+    :return:
+    """
+    new_user = User(
+            id_telegram=telegram_id,
+            user_name=username,
+            admin=True
+    )
+    result = await session.execute(select(User). \
+                                   where(User.id_telegram == new_user.id_telegram))
+    user = result.scalars().first()
+    if user:
+        user.admin = True
+    else:
+        session.add(new_user)
+    await session.commit()
 
 
 async def base_create_user(user: User, session: async_session) -> User:
@@ -228,7 +285,8 @@ async def get_friends(id_telegram: int, session) -> List[Dict[str, Union[int, st
         friends_list.append({
                 'username': friend.user_name,
                 'count_coins': friend.count_coins,
-                'level': friend.level
+                'level': friend.level,
+                'date_registration': friend.registration_date.strftime('%d-%m-%Y')
         })
 
     return friends_list
@@ -277,3 +335,82 @@ async def get_users_limit(limit: int, offset: int, session) -> List[dict]:
     ]
 
     return users_list
+
+async def get_count_users(session) -> int:
+    """
+    Функция для получения общего количества пользователей в базе данных
+    :param session:
+    :return:
+    """
+    count_users = await session.execute(
+            select(func.count(User.id))
+            .where(User.active == True)
+    )
+    return count_users.scalar()
+
+async def get_count_admins(session) -> int:
+    """
+    Функция для получения общего количества администраторов в базе данных
+    :param session:
+    :return:
+    """
+    count_admins = await session.execute(
+            select(func.count(User.id))
+            .where(User.admin == True)
+    )
+    return count_admins.scalar()
+
+async def get_users_today(session) -> int:
+    """
+    Функция для получения количества пользователей за сегодняшний день
+    :param session:
+    :return:
+    """
+    today = date.today()
+    count_users_today = await session.execute(
+            select(func.count(User.id))
+            .where(User.registration_date == today)
+    )
+    return count_users_today.scalar()
+
+async def get_posts_all(session) -> int:
+    """
+    Функция для получения общего количества постов в базе данных
+    :param session:
+    :return:
+    """
+    count_posts = await session.execute(
+            select(func.count(Post.id))
+    )
+    return count_posts.scalar()
+
+async def block_user(username: str, session):
+    """
+    Функция для блокировки пользователя
+    :param session:
+    :return:
+    """
+    user = await session.execute(
+            select(User).where(User.user_name == username)
+    )
+    user = user.scalars().first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.active = False
+    await session.commit()
+
+async def get_pull(session):
+    """
+    Функция для получения пула
+    :param session:
+    :return:
+    """
+    pull = await session.execute(
+            select(Pull)
+    )
+    return pull.scalars().first()
+
+async def set_pull_by_size(size, session):
+    pull = await session.execute(select(Pull))
+    pull.size = size
+    await session.commit()
