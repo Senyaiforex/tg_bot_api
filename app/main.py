@@ -164,7 +164,7 @@ async def get_tasks(session=Depends(get_async_session)):
     """
     • Описание: Метод для получения всех задач нужного типа \n
     • Параметры:\n
-        ◦ type_task (параметр пути, str): Тип задачи('subscribe', 'comment', 'like', 'save', 'watch').\n
+        ◦ нет\n
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий все задачи нужного типа\n
     """
@@ -191,13 +191,15 @@ async def create_user(user: UserIn,
 async def change_coins(id_telegram: int, data_new: ChangeCoins,
                        session: AsyncSession = Depends(get_async_session)):
     """
-    • Описание: Изменяет количество токенов у пользователя.\n
+    • Описание: Изменяет количество монет у пользователя.\n
     • Параметры:\n
-        ◦ id_telegram, amount, add (тело запроса, схема ChangeToken): Данные для изменения токенов.\n
+        ◦ id_telegram (параметр пути, int): Telegram ID пользователя.\n
+        ◦ amount, add, description (тело запроса, схема ChangeToken): Данные для изменения монет.\n
     • Ответ:\n
-        ◦ 200 OK: JSON объект, содержащий обновленную информацию о токенах пользователя.\n
+        ◦ 200 OK: JSON объект, содержащий обновленную информацию о количестве монет пользователя.\n
     """
-    user = await change_coins_by_id(id_telegram, data_new.amount, data_new.add, session)
+    user = await change_coins_by_id(id_telegram, data_new.amount, data_new.add,
+                                    data_new.description, session)
     return JSONResponse(content={'id_telegram': f'{user.id_telegram}', 'count_coins': f'{user.count_coins}'})
 
 
@@ -217,7 +219,7 @@ async def change_pharmd(id_telegram: int, data_new: ChangePharmd,
 
 @app.patch('/api/change_spinners/{id_telegram}')
 async def change_spinners(id_telegram: int, data_new: ChangeSpinners,
-                        session: AsyncSession = Depends(get_async_session)):
+                          session: AsyncSession = Depends(get_async_session)):
     """
     • Описание: Изменяет количество спиннеров у пользователя.\n
     • Параметры:\n

@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 
 class ChangeCoins(BaseModel):
     amount: int
+    description: str
     add: bool
 
 class ChangeSpinners(BaseModel):
