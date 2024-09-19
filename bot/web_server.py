@@ -2,7 +2,6 @@ from datetime import datetime, timedelta
 
 from celery.states import state
 
-from messages_task import send_admin_messages
 import aiohttp_cors
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
@@ -18,6 +17,9 @@ from database import async_session
 from repository import get_order, get_post, update_post, update_order
 from utils.bot_utils.messages import send_messages_for_admin
 from utils.bot_utils.util import create_text_for_post
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 async def get_async_session() -> AsyncSession:
@@ -39,14 +41,26 @@ async def send_message(chat_id, text, url=None):
         pass  # логирование в файл
 
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 async def delete_message(chat_id, message_id):
     try:
         await bot.delete_message(chat_id=chat_id, message_id=message_id)
         return True
     except TelegramBadRequest as ex:
         return False
+
+
+async def get_count_subscribed(request):
+    """
+    Получает количество подписчиков
+    """
+    count = 0
+    try:
+        response = await bot.get_chat_member_count(chat_id=-1002090610085)
+        count = response
+    except TelegramBadRequest as ex:
+        pass  # логирование в файл
+    return web.json_response({'count': count}, status=200)
+
 
 async def check_task(request):
     """
@@ -65,7 +79,7 @@ async def delete_mes(request):
     """
     chat_id = request.match_info.get('chat_id')
     id_message = request.match_info.get('id_message')
-    complete = await delete_message(chat_id , id_message)
+    complete = await delete_message(chat_id, id_message)
     response_data = {'complete': complete}
     if complete:
         status = 200
@@ -119,6 +133,7 @@ async def payment_post(request):
 app = web.Application()
 app.router.add_get('/check_task/{telegram_id}/{task_id}', check_task)
 app.router.add_get('/delete_message/{chat_id}/{id_message}', delete_mes)
+app.router.add_get('/count_subscribed', get_count_subscribed)
 app.router.add_post('/payment', payment_post)
 cors = aiohttp_cors.setup(app
                           , defaults={

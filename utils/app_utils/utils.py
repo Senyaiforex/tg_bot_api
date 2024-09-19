@@ -1,11 +1,13 @@
 import requests
 from collections import defaultdict
-
+import asyncio
+import aiohttp
 
 async def check_task_complete(telegram_id: int, task_id: int) -> bool:
-    url = f'http://bot:8443/check_task/{telegram_id}/{task_id}'
-    response = requests.get(url)
-    if response.status_code == 200:
+    async with aiohttp.ClientSession() as session:
+        url = f'http://bot:8443/check_task/{telegram_id}/{task_id}'
+        response = await session.get(url)
+    if response.status == 200:
         data = response.json()
         complete = data.get('complete')
         return complete

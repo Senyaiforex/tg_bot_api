@@ -3,7 +3,7 @@ from sqlalchemy import select, func
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update, or_
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, aliased
 from models import *
 from datetime import date, datetime, timedelta
 
@@ -732,3 +732,28 @@ async def get_order(session, order_id):
     )
     result = order_query.scalars().first()
     return result
+
+async def get_users_with_posts_count(session: AsyncSession):
+    # Подзапрос для получения пользователя и количества их постов
+    post_alias = aliased(Post)  # Создаем алиас для таблицы Post
+
+    subquery = (
+        select(
+            User.id_telegram.label('user_telegram'),  # Выбираем поле user_telegram
+            func.count(post_alias.id).label("post_count")  # Считаем количество постов
+        )
+        .join(post_alias, User.id_telegram == post_alias.user_telegram, isouter=True)  # Левое соединение с Post
+        .group_by(User.id_telegram)  # Группируем по полю user_telegram
+        .subquery()
+    )
+
+    # Основной запрос для получения количества пользователей с постами > 0
+    stmt = (
+        select(func.count())
+        .select_from(subquery)
+        .where(subquery.c.post_count > 0)
+    )
+
+    result = await session.execute(stmt)
+    users_with_posts_count = result.scalar()
+    return users_with_posts_count

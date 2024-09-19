@@ -1,10 +1,11 @@
 import asyncio
+import aiohttp
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, Request
 from fastapi.params import Path, Annotated, Query
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-
 from utils.app_utils import check_task_complete
 from repository import *
 import uvicorn
@@ -172,6 +173,23 @@ async def get_tasks(session=Depends(get_async_session)):
     tasks = await get_all_tasks(session)
     cat_tasks = await categorize_tasks(tasks)
     return JSONResponse(content={'categories': cat_tasks})
+
+
+@app.get('/api/count_members')
+async def get_count_members(session=Depends(get_async_session)):
+    """
+    • Описание: Метод для получения количества продавцов и покупателей
+    • Параметры:\n
+        ◦ нет\n
+    • Ответ:\n
+        ◦ 200 OK: JSON объект, содержащий количество продавцов sellers и покупателей buyers
+    """
+    sellers = await get_users_with_posts_count(session)
+    async with aiohttp.ClientSession() as session:
+        response = await session.get('http://bot:8443/count_subscribed')
+        content = await response.json()
+        return JSONResponse(content={'sellers': sellers,
+                                     'buyers': int(content.get('count')) - int(sellers)})
 
 
 @app.post('/api/create_user', response_model=BaseUser)
