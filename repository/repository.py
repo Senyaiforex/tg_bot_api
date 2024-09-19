@@ -2,13 +2,12 @@ from typing import List, Dict, Union
 from sqlalchemy import select, func
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from bot.bot_main import marketplace
-from database import async_session
-from sqlalchemy import select, delete, update
+from sqlalchemy import select, delete, update, or_
 from sqlalchemy.orm import joinedload
-from models import User, HistoryTransaction, Task, Post, Pull, SearchPost
+from models import *
 from datetime import date, datetime, timedelta
+
+from models.order import Order
 
 
 async def get_user_by_telegram_id(telegram_id: int, session: async_session) -> User:
@@ -128,6 +127,7 @@ async def get_task_by_id(task_id: int, session: async_session) -> Task:
 async def add_task(user: User, task: Task, session):
     if task not in user.tasks:
         user.tasks.append(task)
+        user.count_tasks += 1
         await session.commit()
 
 
@@ -373,18 +373,27 @@ async def get_count_admins(session) -> int:
     return count_admins.scalar()
 
 
-async def get_users_today(session) -> int:
+async def get_users_date(session, date: date) -> tuple[int]:
     """
     Функция для получения количества пользователей за сегодняшний день
     :param session:
     :return:
     """
-    today = date.today()
-    count_users_today = await session.execute(
+    week_date = date - timedelta(days=7)
+    month_date = date - timedelta(days=30)
+    count_today = await session.execute(
             select(func.count(User.id))
-            .where(User.registration_date == today)
+            .where(User.registration_date == date)
     )
-    return count_users_today.scalar()
+    count_week = await session.execute(
+            select(func.count(User.id))
+            .where(User.registration_date >= week_date)
+    )
+    count_month = await session.execute(
+            select(func.count(User.id))
+            .where(User.registration_date >= month_date)
+    )
+    return (count_today.scalar(), count_week.scalar(), count_month.scalar())
 
 
 async def get_posts_all(session) -> int:
@@ -447,7 +456,9 @@ async def set_pull_size(dict_pull_sizes, session):
 
 
 async def create_post(session, **kwargs):
+    marketplace = kwargs.pop('marketplace', 'Нет')
     new_post = Post(
+            marketplace=marketplace,
             **kwargs
     )
     session.add(new_post)
@@ -565,7 +576,10 @@ async def post_update(session, post_id, **kwargs) -> None:
 
 async def get_post_by_url(session, url_message: str) -> Post:
     result = await session.execute(
-            select(Post).where(Post.url_message == url_message)
+            select(Post).where(
+                    or_(Post.url_message == url_message,
+                        Post.url_message_main == url_message)
+            )
     )
     post = result.scalars().first()
     return post
@@ -575,18 +589,146 @@ async def get_count_post_by_time(session: AsyncSession,
                                  date: date) -> tuple[int]:
     count_today = await session.execute(
             select(func.count(Post.id))
-            .where(Post.public_date == date)
+            .where(Post.date_public == date)
     )
     week_date = date - timedelta(days=7)
     month_date = date - timedelta(days=30)
     count_week = await session.execute(
             select(func.count(Post.id))
-            .where(Post.public_date >= week_date)
+            .where(Post.date_public >= week_date)
     )
     count_month = await session.execute(
             select(func.count(Post.id))
-            .where(Post.public_date >= month_date)
+            .where(Post.date_public >= month_date)
     )
-    return tuple(count_today.scalar(),
-                 count_week.scalar(),
-                 count_month.scalar())
+    return (count_today.scalar(),
+            count_week.scalar(),
+            count_month.scalar())
+
+
+async def get_count_tasks(session: AsyncSession, date: date):
+    count_tasks = await session.execute(
+            select(func.count(Task.id))
+            .where(Task.date_limit >= date)
+    )
+    return count_tasks.scalar()
+
+
+async def get_task_by_url(session, url_task: str) -> Post:
+    result = await session.execute(
+            select(Task).where(Task.url == url_task)
+    )
+    task = result.scalars().first()
+    return task
+
+
+async def task_delete(session, task_id) -> None:
+    query = delete(Task).where(Task.id == task_id)
+    await session.execute(query)
+    await session.commit()
+
+
+async def get_bank_coins(session) -> int:
+    bank_id = 1
+    stmt = select(Bank.coins).where(Bank.id == bank_id)
+    result = await session.execute(stmt)
+    coins = result.scalar_one_or_none()
+    return coins
+
+
+async def bank_update(session, amount: int) -> None:
+    bank_id = 1
+    stmt = (
+            update(Bank).
+            where(Bank.id == bank_id).
+            values(coins=Bank.coins + amount).
+            execution_options(synchronize_session="fetch")
+    )
+
+    await session.execute(stmt)
+    await session.commit()
+
+
+async def get_admins(session):
+    result = await session.execute(
+            select(User)
+            .where(User.admin == True)
+    )
+    admins = result.scalars().all()
+    return admins
+
+
+async def get_posts_by_celery(session) -> int:
+    """
+    Функция для получения всех опубликованных постов в базе данных
+    :param session:
+    :return:
+    """
+    query_posts = await session.execute(
+            select(Post)
+            .where(Post.active == True)
+    )
+    posts_all = query_posts.scalars().all()
+    return posts_all
+
+
+async def get_tasks_by_celery(session) -> int:
+    """
+    Функция для получения всех опубликованных постов в базе данных
+    :param session:
+    :return:
+    """
+    today = datetime.today().date()
+    query_tasks = await session.execute(
+            select(Task)
+            .where(Task.date_limit < today)
+    )
+    tasks_all = query_tasks.result.scalars().all()
+    return tasks_all
+
+
+async def post_update_by_celery(session, post_id, **kwargs) -> None:
+    stmt = (
+            update(Post).
+            where(Post.id == post_id).
+            values(kwargs)
+    )
+    await session.execute(stmt)
+    await session.commit()
+
+
+async def task_delete_by_celery(session, task_id, **kwargs) -> None:
+    stmt = (
+            delete(Task).
+            where(Task.id == task_id)
+    )
+    await session.execute(stmt)
+    await session.commit()
+
+
+async def create_order(session, amount, user_id, username, post_id):
+    new_order = Order(amount=amount, user_telegram=user_id,
+                      post_id=post_id, user_name=username)
+    session.add(new_order)
+    await session.commit()
+    await session.refresh(new_order)
+    return new_order
+
+
+async def update_order(session, order_id, **kwargs):
+    stmt = (
+            update(Order).
+            where(Order.id == order_id).
+            values(kwargs)
+    )
+    await session.execute(stmt)
+    await session.commit()
+
+
+async def get_order(session, order_id):
+    order_query = await session.execute(
+            select(Order).
+            where(Order.id == order_id)
+    )
+    result = order_query.scalars().first()
+    return result

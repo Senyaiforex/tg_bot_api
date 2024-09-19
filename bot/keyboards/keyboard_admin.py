@@ -10,16 +10,19 @@ async def menu_admin(superuser: bool):
     """
     menu_buttons = [
             [KeyboardButton(text='🗒Добавить задание'),
-             KeyboardButton(text='📉Статистика')],
+             KeyboardButton(text='➖Удалить задание')],
             [KeyboardButton(text='➕Добавить пост'),
              KeyboardButton(text='🗑Удалить пост')],
-            [KeyboardButton(text='🚫Блокировать')],
+             [KeyboardButton(text='📉Статистика'),
+              KeyboardButton(text='🚫Блокировать')],
     ]
     if superuser:
-        menu_buttons[2].append(KeyboardButton(text='👥Добавить администратора'))
-        menu_buttons.append([KeyboardButton(text='💰Пул')])
+        menu_buttons.append([KeyboardButton(text='👥Добавить администратора'),
+                             KeyboardButton(text='💰Пул')])
+        menu_buttons.append([KeyboardButton(text='💵Банк монет')])
     keyboard = ReplyKeyboardMarkup(
-            keyboard=menu_buttons, is_persistent=True
+            keyboard=menu_buttons, is_persistent=True,
+            one_time_keyboard=False, resize_keyboard=True
     )
     return keyboard
 
@@ -30,9 +33,9 @@ async def inline_statistics():
     :return:
     """
     menu_inline_buttons = [
-            [InlineKeyboardButton(text='Статистика по пользователям', callback_data='all_info_users'),
+            [InlineKeyboardButton(text='Статистика по всем пользователям', callback_data='all_info_users'),
              InlineKeyboardButton(text='Информация о пользователе', callback_data='info_user')],
-             [InlineKeyboardButton(text='Статистика по постам', callback_data='info_posts')],
+            [InlineKeyboardButton(text='Статистика по постам и заданиям', callback_data='info_posts')],
     ]
     keyboard = InlineKeyboardMarkup(
             inline_keyboard=menu_inline_buttons,
@@ -53,6 +56,7 @@ async def user_info_keyboard(telegram_id):
             inline_keyboard=menu_inline_buttons,
     )
     return keyboard
+
 
 async def pull_keyboard():
     """
@@ -93,7 +97,22 @@ async def pull_inline():
     """
     menu_inline_buttons = [
             [InlineKeyboardButton(text='Посмотреть текущий пул', callback_data='current_pull')],
-            [InlineKeyboardButton(text='Установить пул', callback_data='install_pull')]
+            [InlineKeyboardButton(text='Установить пул', callback_data='set_pull')]
+    ]
+    keyboard = InlineKeyboardMarkup(
+            inline_keyboard=menu_inline_buttons,
+    )
+    return keyboard
+
+
+async def menu_pull_confirm():
+    """
+    Создаёт inline кнопки для подтверждения изменения пула
+    :return:
+    """
+    menu_inline_buttons = [
+            [InlineKeyboardButton(text='Да', callback_data='confirm_pull'),
+             InlineKeyboardButton(text='Нет', callback_data='set_pull')]
     ]
     keyboard = InlineKeyboardMarkup(
             inline_keyboard=menu_inline_buttons,

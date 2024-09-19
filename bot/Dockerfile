@@ -6,11 +6,11 @@ WORKDIR /bot
 
 # Копируем файлы, относящиеся к боту
 COPY ./bot/requirements.txt /bot/requirements.txt
-COPY ./bot /bot
-
-
 RUN pip install --upgrade pip
 RUN pip install -r /bot/requirements.txt
+
+COPY ./bot /bot
+
 
 # Создаем символические ссылки на общие модули
 RUN ln -s /models /bot/models \

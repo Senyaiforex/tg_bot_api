@@ -1,6 +1,14 @@
 version: '3.8'
 
 services:
+  redis-bot:
+    image: redis
+    hostname: redis
+    privileged: true
+    ports:
+      - "6379:6379"
+    networks:
+      - my_network
   fastapi:
     build:
       context: .
@@ -34,6 +42,24 @@ services:
       - ./app.db:/bot/app.db
     networks:
       - my_network
+  celery-worker:
+    build:
+      context: .
+      dockerfile: ./bot/Dockerfile
+    container_name: celery_worker
+    command: celery -A tasks.app worker -B --loglevel=info
+    volumes:
+      - ./models:/bot/models
+      - ./repository:/bot/repository
+      - ./utils:/bot/utils
+      - ./database.py:/bot/database.py
+      - ./app.db:/bot/app.db
+    networks:
+      - my_network
+    depends_on:
+      - redis-bot
+      - bot
+      - fastapi
 networks:
   my_network:
     driver: bridge

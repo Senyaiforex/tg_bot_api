@@ -1,19 +1,26 @@
 from datetime import datetime
+
 from sqlalchemy import Column, String, Integer, Table, ForeignKey, Date, DateTime, Boolean
 from sqlalchemy.orm import relationship
 from database import Base, async_session
 from .posts import Post
+
 friends = Table(
-    'friends', Base.metadata,
-    Column('friend1_id_telegram', ForeignKey('users.id_telegram'), primary_key=True),
-    Column('friend2_id_telegram', ForeignKey('users.id_telegram'), primary_key=True),
+        'friends', Base.metadata,
+        Column('friend1_id_telegram', ForeignKey('users.id_telegram'),
+               primary_key=True),
+        Column('friend2_id_telegram', ForeignKey('users.id_telegram'),
+               primary_key=True),
 )
 
 users_tasks = Table(
-    'users_tasks', Base.metadata,
-    Column('user_id', ForeignKey('users.id'), primary_key=True),
-    Column('task_id', ForeignKey('tasks.id'), primary_key=True),
+        'users_tasks', Base.metadata,
+        Column('user_id', ForeignKey('users.id'),
+               primary_key=True),
+        Column('task_id', ForeignKey('tasks.id'),
+               primary_key=True),
 )
+
 
 class User(Base):
     """
@@ -30,23 +37,31 @@ class User(Base):
     purchase_count = Column(Integer, default=0)
     sale_count = Column(Integer, default=0)
     registration_date = Column(Date, default=datetime.utcnow)
-    history_transactions = relationship("HistoryTransaction", backref='user')
+    history_transactions = relationship("HistoryTransaction",
+                                        backref='user')
     posts = relationship("Post", backref='user')
     active = Column(Boolean, default=1)
     admin = Column(Boolean, default=0)
     superuser = Column(Boolean, default=0)
     spinners = Column(Integer, default=0, comment='Количество спиннеров для рулетки')
-    tasks = relationship("Task", secondary=users_tasks, back_populates='users')
+    tasks = relationship("Task", secondary=users_tasks,
+                         back_populates='users')
+    count_tasks = Column(Integer, default=0, comment='Количество выполненных задач')
     friends = relationship(
             'User',
             secondary=friends,
             primaryjoin=id_telegram == friends.c.friend1_id_telegram,
             secondaryjoin=id_telegram == friends.c.friend2_id_telegram,
             back_populates='friends',
-            foreign_keys=[friends.c.friend1_id_telegram, friends.c.friend2_id_telegram]
+            foreign_keys=[friends.c.friend1_id_telegram,
+                          friends.c.friend2_id_telegram]
     )
+    search_posts = relationship('SearchPost',
+                                backref='user'
+                                )
 
-    async def update_count_coins(self, session: async_session, amount: int, description: str, new=False):
+    async def update_count_coins(self, session: async_session, amount: int,
+                                 description: str, new=False):
         if new:
             self.count_coins = 0
         self.count_coins += amount
@@ -69,4 +84,19 @@ class HistoryTransaction(Base):
     user_id = Column(Integer, ForeignKey('users.id'))
     change_amount = Column(Integer, nullable=False)
     description = Column(String, nullable=False)
-    transaction_date = Column(DateTime, default=datetime.utcnow, nullable=False)
+    transaction_date = Column(DateTime,
+                              default=datetime.utcnow,
+                              nullable=False)
+
+
+class SearchPost(Base):
+    """
+    Модель товара в листе ожидания
+    """
+    __tablename__ = 'search_post'
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String,
+                  comment='Название товара для поиска',
+                  index=True,
+                  nullable=False)
+    user_id = Column(Integer, ForeignKey('users.id'))

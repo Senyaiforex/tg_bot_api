@@ -65,11 +65,13 @@ class UserOut(BaseUser):
             default=0,
             description='Количество спиннеров для рулетки'
     )
+    count_tasks: int = Field(default=0, description='Количество выполненных задач')
     class Config:
         from_orm = True
         related_fields = {'friends': {'exclude': ['id_telegram', 'count_pharmd',
                                                   'registration_date', 'purchase_count',
-                                                  'sale_count', 'count_invited_friends', ]}}
+                                                  'sale_count', 'count_invited_friends',
+                                                  'count_tasks', 'spinners']}}
 
     @field_validator('registration_date', mode='before')
     def format_transaction_date(cls, v):

@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, Request
 from fastapi.params import Path, Annotated, Query
@@ -257,5 +258,5 @@ def main():
         print("----Приложение было принудительно остановлено----")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

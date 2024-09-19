@@ -1,4 +1,5 @@
 from .pulls import Pull
-from .users import User, friends, HistoryTransaction, users_tasks
+from .users import *
 from .tasks import Task
 from .posts import Post
+from .bank import Bank
