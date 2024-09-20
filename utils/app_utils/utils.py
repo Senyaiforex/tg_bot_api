@@ -58,6 +58,8 @@ async def create_data_posts(posts_count: list[int]) -> list[dict]:
         list_models.append({
                 'name': dict_type_posts[index][0],
                 'price': dict_type_posts[index][2],
-                'data': [current_percent, need_percent]
+                'data': [current_percent, need_percent],
+                'current': posts_count[index],
+                'need': dict_type_posts[index][1]
         })
     return list_models

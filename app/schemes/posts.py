@@ -7,6 +7,8 @@ class PostsByType(BaseModel):
     name: str = Field(default=..., description='Название типа')
     price: int = Field(default=..., description='Стоимость размещения')
     data: List[int] = Field(default=..., description='Данные по ликвидности')
+    current: int = Field(default=..., description='Количество публикаций')
+    need: int = Field(default=..., description='Требуемое количество публикаций')
 
 dict_t = [{'name': 'ПОсты за рубли',
            "price": '1450',

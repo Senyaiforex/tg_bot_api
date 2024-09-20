@@ -193,7 +193,7 @@ async def get_count_members(session=Depends(get_async_session)):
 
 
 @app.get('/api/count_posts_by_type', response_model=list[PostsByType])
-async def get_count_members(session=Depends(get_async_session)):
+async def get_count_posts_by_type(session=Depends(get_async_session)):
     """
     • Описание: Метод для получения количества опубликованных постов
       за последний месяц в зависимости от их типа
