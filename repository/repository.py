@@ -2,7 +2,7 @@ from typing import List, Dict, Union
 from sqlalchemy import select, func
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, update, or_
+from sqlalchemy import select, delete, update, or_, and_
 from sqlalchemy.orm import joinedload, aliased
 from models import *
 from datetime import date, datetime, timedelta
@@ -606,6 +606,53 @@ async def get_count_post_by_time(session: AsyncSession,
             count_month.scalar())
 
 
+
+
+async def get_count_posts_with_types(session: AsyncSession,
+                                     date: date, type_date: str) -> list[int]:
+    date_dict = {"today": date,
+                 'week': date - timedelta(days=7),
+                 'month': date - timedelta(days=30)}
+    date = date_dict[type_date]
+    print(date)
+    count_free = await session.execute(
+            select(func.count(Post.id))
+            .where(
+                    and_(
+                            Post.date_public >= date,
+                            Post.method == 'free'
+                    )
+            ))
+    count_coins = await session.execute(
+            select(func.count(Post.id))
+            .where(
+                    and_(
+                            Post.date_public >= date,
+                            Post.method == 'coins'
+                    )
+            ))
+    count_token = await session.execute(
+            select(func.count(Post.id))
+            .where(
+                    and_(
+                            Post.date_public >= date,
+                            Post.method == 'token'
+                    )
+            ))
+    count_money = await session.execute(
+            select(func.count(Post.id))
+            .where(
+                    and_(
+                            Post.date_public >= date,
+                            Post.method == 'money'
+                    )
+            ))
+    counts_posts = [count_free.scalar(), count_token.scalar(),
+                    count_coins.scalar(), count_money.scalar()]
+    print(counts_posts)
+    return counts_posts
+
+
 async def get_count_tasks(session: AsyncSession, date: date):
     count_tasks = await session.execute(
             select(func.count(Task.id))
@@ -733,25 +780,26 @@ async def get_order(session, order_id):
     result = order_query.scalars().first()
     return result
 
+
 async def get_users_with_posts_count(session: AsyncSession):
     # Подзапрос для получения пользователя и количества их постов
     post_alias = aliased(Post)  # Создаем алиас для таблицы Post
 
     subquery = (
-        select(
-            User.id_telegram.label('user_telegram'),  # Выбираем поле user_telegram
-            func.count(post_alias.id).label("post_count")  # Считаем количество постов
-        )
-        .join(post_alias, User.id_telegram == post_alias.user_telegram, isouter=True)  # Левое соединение с Post
-        .group_by(User.id_telegram)  # Группируем по полю user_telegram
-        .subquery()
+            select(
+                    User.id_telegram.label('user_telegram'),  # Выбираем поле user_telegram
+                    func.count(post_alias.id).label("post_count")  # Считаем количество постов
+            )
+            .join(post_alias, User.id_telegram == post_alias.user_telegram, isouter=True)  # Левое соединение с Post
+            .group_by(User.id_telegram)  # Группируем по полю user_telegram
+            .subquery()
     )
 
     # Основной запрос для получения количества пользователей с постами > 0
     stmt = (
-        select(func.count())
-        .select_from(subquery)
-        .where(subquery.c.post_count > 0)
+            select(func.count())
+            .select_from(subquery)
+            .where(subquery.c.post_count > 0)
     )
 
     result = await session.execute(stmt)

@@ -12,8 +12,8 @@ import uvicorn
 from sqlalchemy.ext.asyncio import AsyncSession
 from database import engine, async_session, Base
 from schemes import UserIn, UserOut, DeleteUser, ChangeCoins, ChangePharmd, HistoryTransactionOut, \
-    BaseUser, TaskOut, ChangeSpinners
-from utils.app_utils.utils import categorize_tasks
+    BaseUser, TaskOut, ChangeSpinners, PostsByType
+from utils.app_utils.utils import categorize_tasks, liquid_const, create_data_posts
 
 
 @asynccontextmanager
@@ -190,6 +190,24 @@ async def get_count_members(session=Depends(get_async_session)):
         content = await response.json()
         return JSONResponse(content={'sellers': sellers,
                                      'buyers': int(content.get('count')) - int(sellers)})
+
+
+@app.get('/api/count_posts_by_type', response_model=list[PostsByType])
+async def get_count_members(session=Depends(get_async_session)):
+    """
+    • Описание: Метод для получения количества опубликованных постов
+      за последний месяц в зависимости от их типа
+    • Параметры:\n
+        ◦ нет\n
+    • Ответ:\n
+        ◦ 200 OK: JSON объект, содержащий количество продавцов sellers и покупателей buyers
+    """
+
+    date_today = datetime.today().date()
+    posts_count = await get_count_posts_with_types(session, date_today, 'month')
+    data = await create_data_posts(posts_count)
+
+    return [PostsByType(**inst) for inst in data]
 
 
 @app.post('/api/create_user', response_model=BaseUser)
