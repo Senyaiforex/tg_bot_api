@@ -1,19 +1,19 @@
-import asyncio
 import aiohttp
-
-from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends, Request
-from fastapi.params import Path, Annotated, Query
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from utils.app_utils import check_task_complete
-from repository import *
 import uvicorn
+from datetime import datetime
+from contextlib import asynccontextmanager
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from models.tasks import CategoryTask
+from utils.app_utils import check_task_complete, create_data_tasks
+from fastapi.params import Path, Annotated, Query
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Depends, Request, HTTPException
+from repository import UserRepository, PostRepository, TaskRepository, PullRepository
 from database import engine, async_session, Base
-from schemes import UserIn, UserOut, DeleteUser, ChangeCoins, ChangePharmd, HistoryTransactionOut, \
-    BaseUser, TaskOut, ChangeSpinners, PostsByType
-from utils.app_utils.utils import categorize_tasks, liquid_const, create_data_posts
+from schemes import *
+from utils.app_utils.utils import categorize_tasks, create_data_posts, create_data_pull
 
 
 @asynccontextmanager
@@ -44,7 +44,7 @@ app.add_middleware(
 )
 
 
-async def get_async_session() -> AsyncSession:
+async def get_async_session() -> async_session:
     async with async_session() as session:
         yield session
 
@@ -59,7 +59,7 @@ async def get_user(id_telegram: Annotated[int, Path(description="Telegram ID п�
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий информацию о пользователе.\n
     """
-    user = await get_user_by_telegram_id(id_telegram, session)
+    user = await UserRepository.get_user_by_telegram_id(id_telegram, session)
     return user
 
 
@@ -74,7 +74,7 @@ async def get_user_friends(id_telegram: Annotated[int, Path(description="Telegra
         ◦ 200 OK: JSON объект, содержащий информацию по каждому другу. Username, Количество токенов, уровень.\n
 
     """
-    friends = await get_friends(id_telegram, session)
+    friends = await UserRepository.get_friends(id_telegram, session)
 
     if friends is None:
         raise HTTPException(status_code=404, detail="User not found or no friends")
@@ -92,7 +92,7 @@ async def get_coins(id_telegram: Annotated[int, Path(description="Telegram ID п
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий количество токенов.\n
     """
-    user = await get_user_by_telegram_id(id_telegram, session)
+    user = await UserRepository.get_user_by_telegram_id(id_telegram, session)
     return JSONResponse(content={'count_coins': f'{user.count_coins}'},
                         headers={'Content-Type': 'application/json'})
 
@@ -109,7 +109,7 @@ async def get_top_users(limit: int = Query(default=10, description='Количе
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий массив с топом пользователей.\n
     """
-    users = await get_users_limit(limit, offset, session)
+    users = await UserRepository.get_users_limit(limit, offset, session)
     return JSONResponse(users, status_code=200)
 
 
@@ -123,7 +123,7 @@ async def get_pharmd(id_telegram: Annotated[int, Path(description="Telegram ID �
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий количество фарма.\n
     """
-    user = await get_user_by_telegram_id(id_telegram, session)
+    user = await UserRepository.get_user_by_telegram_id(id_telegram, session)
     return JSONResponse(content={'count_pharmd': f'{user.count_pharmd}'}, headers={'Content-Type': 'application/json'})
 
 
@@ -141,7 +141,7 @@ async def get_transactions(id_telegram: Annotated[int, Path(description="Telegra
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий все транзакции пользователя.\n
     """
-    transactions = await get_transactions_by_id(id_telegram, limit, offset, session)
+    transactions = await UserRepository.get_transactions_by_id(id_telegram, limit, offset, session)
     return transactions
 
 
@@ -161,18 +161,18 @@ async def get_task_status(id_telegram: Annotated[int, Path(description="Telegram
     return JSONResponse(content={'complete': task_complete})
 
 
-@app.get('/api/tasks')
-async def get_tasks(session=Depends(get_async_session)):
+@app.get('/api/tasks/{id_telegram}/', response_model=list[CategoriesOut])
+async def get_tasks(id_telegram: Annotated[int, Path(description="Telegram ID пользователя", gt=0)],
+                    session=Depends(get_async_session)):
     """
     • Описание: Метод для получения всех задач нужного типа \n
     • Параметры:\n
         ◦ нет\n
     • Ответ:\n
-        ◦ 200 OK: JSON объект, содержащий все задачи нужного типа\n
+        ◦ 200 OK: JSON объект, содержащий все задачи\n
     """
-    tasks = await get_all_tasks(session)
-    cat_tasks = await categorize_tasks(tasks)
-    return JSONResponse(content={'categories': cat_tasks})
+    categories = await create_data_tasks(TaskOut, CategoriesOut, id_telegram, session)
+    return categories
 
 
 @app.get('/api/count_members')
@@ -184,7 +184,7 @@ async def get_count_members(session=Depends(get_async_session)):
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий количество продавцов sellers и покупателей buyers
     """
-    sellers = await get_users_with_posts_count(session)
+    sellers = await UserRepository.get_users_with_posts_count(session)
     async with aiohttp.ClientSession() as session:
         response = await session.get('http://bot:8443/count_subscribed')
         content = await response.json()
@@ -204,10 +204,34 @@ async def get_count_posts_by_type(session=Depends(get_async_session)):
     """
 
     date_today = datetime.today().date()
-    posts_count = await get_count_posts_with_types(session, date_today, 'month')
+    posts_count = await PostRepository.get_count_posts_with_types(session, date_today, 'month')
     data = await create_data_posts(posts_count)
 
     return [PostsByType(**inst) for inst in data]
+
+
+@app.get('/api/pulls_info', response_model=list[PullOut])
+async def pull_info(session: AsyncSession = Depends(get_async_session)):
+    """
+    • Описание: Метод для получения информации о пулле
+    • Параметры:\n
+        ◦ нет\n
+    • Ответ:\n
+        'Параметры пулла'
+            type_pull - тип пулла
+            size - максимальный размер пулла
+            current_size - текущий пулл
+            percent - отношение текущего пула к максимальному в %
+        ◦ 200 OK: JSON объект, содержащий информацию об общем пулле
+    """
+
+    pull = await PullRepository.get_pull(session)
+    dict_data = await create_data_pull(pull)
+    list_pulls = [PullOut(type_pull=key,
+                          size=value[0],
+                          current_size=value[1],
+                          percent=value[2]) for key, value in dict_data.items()]
+    return list_pulls
 
 
 @app.post('/api/create_user', response_model=BaseUser)
@@ -220,7 +244,7 @@ async def create_user(user: UserIn,
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий информацию о созданном пользователе.\n
     """
-    new_user = await base_create_user(user, session)
+    new_user = await UserRepository.base_create_user(user, session)
     return new_user
 
 
@@ -235,8 +259,8 @@ async def change_coins(id_telegram: int, data_new: ChangeCoins,
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий обновленную информацию о количестве монет пользователя.\n
     """
-    user = await change_coins_by_id(id_telegram, data_new.amount, data_new.add,
-                                    data_new.description, session)
+    user = await UserRepository.change_coins_by_id(id_telegram, data_new.amount, data_new.add,
+                                                   data_new.description, session)
     return JSONResponse(content={'id_telegram': f'{user.id_telegram}', 'count_coins': f'{user.count_coins}'})
 
 
@@ -250,7 +274,9 @@ async def change_pharmd(id_telegram: int, data_new: ChangePharmd,
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий обновленную информацию о фарме пользователя.\n
     """
-    user = await change_pharmd_by_id(id_telegram, data_new.amount, data_new.add, session)
+    user = await UserRepository.change_pharmd_by_id(id_telegram, data_new.amount, data_new.add, session)
+    if data_new.add:
+        await PullRepository.update_pull(session, data_new.amount, "current_farming")
     return JSONResponse(content={'id_telegram': f'{user.id_telegram}', 'count_pharmd': f'{user.count_pharmd}'})
 
 
@@ -264,7 +290,7 @@ async def change_spinners(id_telegram: int, data_new: ChangeSpinners,
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий обновленную информацию о количестве спиннеров пользователя.\n
     """
-    user = await change_spinners_by_id(id_telegram, data_new.amount, data_new.add, session)
+    user = await UserRepository.change_spinners_by_id(id_telegram, data_new.amount, data_new.add, session)
     return JSONResponse(content={'id_telegram': f'{user.id_telegram}', 'spinners': f'{user.spinners}'})
 
 
@@ -279,7 +305,7 @@ async def delete_user(user: DeleteUser,
         ◦ 200 OK: JSON объект, указывающий на успешное удаление.\n
 
     """
-    user = await get_user_by_telegram_id(user.id_telegram, session)
+    user = await UserRepository.get_user_by_telegram_id(user.id_telegram, session)
     await session.delete(user)
     await session.commit()
     return JSONResponse(content={"detail": "User deleted"})

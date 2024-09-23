@@ -4,7 +4,6 @@ services:
   redis-bot:
     image: redis
     hostname: redis
-    privileged: true
     ports:
       - "6379:6379"
     networks:
@@ -40,6 +39,7 @@ services:
       - ./utils:/bot/utils
       - ./database.py:/bot/database.py
       - ./app.db:/bot/app.db
+      - ./media:/bot/media
     networks:
       - my_network
   celery-worker:

@@ -1,5 +1,5 @@
-from aiogram.types import (ReplyKeyboardMarkup, KeyboardButton,
-                           InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo)
+from aiogram.types import (ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton,
+                           InlineKeyboardMarkup)
 
 
 async def menu_admin(superuser: bool):
@@ -13,8 +13,8 @@ async def menu_admin(superuser: bool):
              KeyboardButton(text='➖Удалить задание')],
             [KeyboardButton(text='➕Добавить пост'),
              KeyboardButton(text='🗑Удалить пост')],
-             [KeyboardButton(text='📉Статистика'),
-              KeyboardButton(text='🚫Блокировать')],
+            [KeyboardButton(text='📉Статистика'),
+             KeyboardButton(text='🚫Блокировать')],
     ]
     if superuser:
         menu_buttons.append([KeyboardButton(text='👥Добавить администратора'),
@@ -82,7 +82,9 @@ async def select_type_task():
              InlineKeyboardButton(text='Просмотр видео', callback_data='task_watch')],
             [InlineKeyboardButton(text='Поставить лайк', callback_data='task_like'),
              InlineKeyboardButton(text='Добавить в избранное', callback_data='task_save')],
-            [InlineKeyboardButton(text='Оставить комментарий', callback_data='task_comment')],
+            [InlineKeyboardButton(text='Оставить комментарий', callback_data='task_comment'),
+             InlineKeyboardButton(text='Бонусы', callback_data='task_bonus')],
+            [InlineKeyboardButton(text='Игра', callback_data='task_games')]
     ]
     keyboard = InlineKeyboardMarkup(
             inline_keyboard=menu_inline_buttons,

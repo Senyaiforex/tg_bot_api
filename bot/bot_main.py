@@ -1,4 +1,5 @@
 import multiprocessing
+import asyncio
 import os
 import emoji
 from aiogram import Bot, Dispatcher, F
@@ -7,12 +8,13 @@ from aiogram.filters import Command, CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.exceptions import TelegramNotFound, TelegramBadRequest
 import functools
 from bot_admin import bot as bot_admin
 from payment import get_url_payment
 from keyboards import *
-from repository import *
+from database import async_session
+from repository import UserRepository, TaskRepository, PostRepository, OrderRepository, SearchListRepository, \
+    BankRepository, PullRepository
 import subprocess
 import logging
 from utils.bot_utils.messages import process_menu_message, message_answer_process, delete_message, reply_keyboard, \
@@ -22,7 +24,7 @@ from utils.bot_utils.util import *
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 MEDIA_DIR = 'media'
-MAX_SIZE_FILE = 3 * 1024 * 1024
+MAX_SIZE_FILE = int(1.5 * 1024 * 1024)
 
 
 async def get_async_session() -> AsyncSession:
@@ -38,12 +40,14 @@ storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
 web_app_url = 'https://tg-botttt.netlify.app'
 
+
 async def is_user_subscribed(user_id: int, channel_id: str) -> bool:
     """
     Функция проверки, что пользователь с user_id подписан на канал channel_id
     """
     member = await bot.get_chat_member(chat_id=channel_id, user_id=user_id)
     return member.status in ["member", "administrator", "creator"]
+
 
 def subscribed(func):
     @functools.wraps(func)
@@ -53,7 +57,7 @@ def subscribed(func):
             await message.answer(txt_us.no_subscribe)
             return
         async for session in get_async_session():
-            user = await get_user_tg(user_id, session)
+            user = await UserRepository.get_user_tg(user_id, session)
             if user and user.active == False:
                 await message.answer(txt_us.block)
                 return
@@ -78,7 +82,6 @@ async def start(message: Message, command: CommandObject) -> None:
     """
     Функция обработки команды /start, для начала работы с ботом
     """
-    await bot.send_message(chat_id=-1002409284453, text='SADASTESET', message_thread_id=2)
     picture = FSInputFile('static/start_pic.jpg')
     user_id = message.from_user.id
     username = message.from_user.username
@@ -102,7 +105,7 @@ async def start(message: Message, command: CommandObject) -> None:
         if inviter_id:
             await handle_invitation(inviter_id, user_id, username, session)
         else:
-            await create_user_tg(user_id, username, session)
+            await UserRepository.create_user_tg(user_id, username, session)
 
 
 @dp.message(F.text == 'Меню')
@@ -203,7 +206,7 @@ async def list_search(callback_query: CallbackQuery, state: FSMContext) -> None:
     """
     list_data = []
     async for session in get_async_session():
-        list_search = await get_search_by_user(session, callback_query.from_user.id)
+        list_search = await SearchListRepository.get_search_by_user(session, callback_query.from_user.id)
         if len(list_search) == 0:
             await message_answer_process(bot, callback_query,
                                          state, 'У вас нет товаров в листе ожидания')
@@ -223,7 +226,7 @@ async def del_search(callback_query: CallbackQuery, state: FSMContext) -> None:
     """
     id_search = callback_query.data.split('_')[2]
     async for session in get_async_session():
-        await search_delete(session, id_search)
+        await SearchListRepository.search_delete(session, id_search)
         await callback_query.message.edit_text(text='Товар удалён')
 
 
@@ -247,7 +250,7 @@ async def post_list(callback_query: CallbackQuery, state: FSMContext) -> None:
     """
     list_data = []
     async for session in get_async_session():
-        posts = await get_posts_by_user(session, callback_query.from_user.id)
+        posts = await PostRepository.get_posts_by_user(session, callback_query.from_user.id)
         if len(posts) == 0:
             await message_answer_process(bot, callback_query,
                                          state, 'У вас нет постов и публикаций')
@@ -269,14 +272,14 @@ async def del_post(callback_query: CallbackQuery, state: FSMContext) -> None:
     """
     id_post = callback_query.data.split('_')[2]
     async for session in get_async_session():
-        post = await get_post(session, id_post)
+        post = await PostRepository.get_post(session, id_post)
         if all((post.url_message, post.channel_id)):
             chat_id = post.channel_id.split('_')[0]
             id_message = post.url_message.split('/')[4]
             id_main_message = post.url_message_main.split('/')[4]
             file_path = os.path.join(os.getcwd(), MEDIA_DIR, post.photo)
             os.remove(file_path)
-            await post_delete(session, id_post)
+            await PostRepository.post_delete(session, id_post)
             if post.active:
                 await delete_message(bot, chat_id, id_message)
                 if id_main_message != id_message:
@@ -292,7 +295,7 @@ async def deactivate_post(callback_query: CallbackQuery, state: FSMContext) -> N
     """
     id_post = callback_query.data.split('_')[2]
     async for session in get_async_session():
-        post = await get_post(session, id_post)
+        post = await PostRepository.get_post(session, id_post)
         if all((post.active, post.url_message, post.channel_id)):
             chat_id = post.channel_id.split('_')[0]
             id_message = post.url_message.split('/')[4]
@@ -300,7 +303,7 @@ async def deactivate_post(callback_query: CallbackQuery, state: FSMContext) -> N
             await delete_message(bot, chat_id, id_message)
             if id_main_message != id_message:
                 await delete_message(bot, chat_id, id_main_message)
-        await post_update(session, id_post, active=False)
+        await PostRepository.update_post(session, id_post, active=False)
         await message_answer_process(bot, callback_query, state, "Пост снят с публикации",
                                      await reply_keyboard())
 
@@ -326,7 +329,7 @@ async def process_product_name(message: Message, state: FSMContext) -> None:
     dict_text = {True: txt_us.positive.format(name=message.text),
                  False: txt_us.negative}
     async for session in get_async_session():
-        search_cr = await create_search(session, user_id, message.text)
+        search_cr = await SearchListRepository.create_search(session, user_id, message.text)
         await state.clear()
         await message_answer_process(bot, message, state, dict_text[search_cr])
 
@@ -536,7 +539,7 @@ async def public_and_create_post(session, callback_query, data, state, method):
         await send_messages_for_admin(session, bot_admin, url, username)
     else:
         post_id = await create_post_user(session, bot, **dict_post_params)
-        order = await create_order(session, 1000, user_id, username, post_id)
+        order = await OrderRepository.create_order(session, 1000, user_id, username, post_id)
         payment_url = await get_url_payment(order.id, 1000, "Размещение поста в группе")
         await message_answer_process(bot, callback_query, state, txt_us.post_payment.format(url=payment_url))
 
@@ -559,12 +562,12 @@ async def public_and_update_post(session, callback_query, state, data, post):
             url_main_theme = url
         await message_answer_process(bot, callback_query, state, txt_us.post_success.format(url=url))
         await message_answer_process(bot, callback_query, state, txt_us.post_success.format(url=url))
-        await update_post(session, id_post, active=True,
-                          date_expired=date_expired, date_public=date_public,
-                          url_message=url, method=method, url_message_main=url_main_theme)
+        await PostRepository.update_post(session, id_post, active=True,
+                                         date_expired=date_expired, date_public=date_public,
+                                         url_message=url, method=method, url_message_main=url_main_theme)
         await send_messages_for_admin(session, bot_admin, url, username)
     else:
-        order = await create_order(session, 1000, user_id, username, post.id)
+        order = await OrderRepository.create_order(session, 1000, user_id, username, post.id)
         payment_url = await get_url_payment(order.id, 1000, "Размещение поста в группе")
         await message_answer_process(bot, callback_query, state, txt_us.post_payment.format(url=payment_url))
 
@@ -583,7 +586,7 @@ async def finish(callback_query: CallbackQuery, state: FSMContext) -> None:
         elif method == 'coins':
             success = await public_for_coins(user_id, 10000, session)
             if success:
-                await bank_update(session, 10000)
+                await BankRepository.bank_update(session, 10000)
                 await public_and_create_post(session, callback_query, data, state, method)
             else:
                 await message_answer_process(bot, callback_query, state, txt_us.not_coins)
@@ -601,7 +604,7 @@ async def again_public(callback_query: CallbackQuery, state: FSMContext) -> None
     method = callback_query.data.split('_')[1]
     user_id = callback_query.from_user.id
     async for session in get_async_session():
-        post = await get_post(session, id_post)
+        post = await PostRepository.get_post(session, id_post)
         data = {'product_name': post.name,
                 'product_price': post.price,
                 'price_discount': post.discounted_price,
@@ -618,7 +621,7 @@ async def again_public(callback_query: CallbackQuery, state: FSMContext) -> None
         elif method == 'coins':
             success = await public_for_coins(user_id, 10000, session)
             if success:
-                await bank_update(session, 10000)
+                await BankRepository.bank_update(session, 10000)
                 await public_and_update_post(session, callback_query, state, data, post)
             else:
                 await message_answer_process(bot, callback_query, state, txt_us.not_coins)
@@ -639,13 +642,21 @@ async def check_task_complete(telegram_id: int, task_id: int) -> bool:
     Функция для проверки выполнения задания
     """
     async for session in get_async_session():
-        user = await get_user_by_telegram_id(telegram_id, session)
-        task = await get_task_by_id(task_id, session)
-        if task.type_task == 'subscribe':
+        user = await UserRepository.get_user_by_telegram_id(telegram_id, session)
+        task = await TaskRepository.get_task_by_id(task_id, session)
+        if task.category_id == 1:
             if await is_user_subscribed(telegram_id, await get_channel_id_by_url(task.url)):
-                await add_task(user, task, session)
+                await TaskRepository.add_task(user, task, session)
+                await PullRepository.update_pull(session, 5000, 'current_task')
+                await user.update_count_coins(session, 5000, 'Выполнение задания')
                 return True
-        return False
+            else:
+                return False
+        else: # Пока что возвращаем True для всех остальных задач
+            await TaskRepository.add_task(user, task, session)
+            await PullRepository.update_pull(session, 5000, 'current_task')
+            await user.update_count_coins(session, 5000, 'Выполнение задания')
+            return True
 
 
 def run_web_server():

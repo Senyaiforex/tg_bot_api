@@ -1,7 +1,5 @@
-from re import search
-
 from aiogram.types import (ReplyKeyboardMarkup, KeyboardButton,
-                           InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo)
+                           InlineKeyboardButton, InlineKeyboardMarkup)
 from utils.bot_utils.text_static import catalog_list, channels
 
 group_url = 'https://t.me/Buyer_Marketplace'
@@ -29,7 +27,6 @@ async def start_keyboard():
 async def menu_keyboard():
     """
     Функция создаёт кнопки для меню
-    :param url: str
     :return: InlineKeyboardMarkup
     """
     add_post = [InlineKeyboardButton(text='📥 Разместить пост в группе',

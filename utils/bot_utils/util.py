@@ -1,18 +1,14 @@
-import asyncio
 from datetime import datetime, timedelta
 from difflib import SequenceMatcher
 
 from aiogram import Bot
-from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from .messages import send_message
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from models import User, friends, SearchPost, Post, Pull
-from repository import get_count_users, get_count_admins, get_users_date, get_posts_all, get_user_by_telegram_id, \
-    get_user_by_username, get_transactions_by_id, get_friends, block_user, get_search_all, create_post, \
-    get_users_with_search, get_count_coins, change_coins_by_id, update_post, get_count_post_by_time, get_count_tasks
+from models import User, friends, Post, Pull
+from repository import UserRepository, PostRepository, TaskRepository, PullRepository
 from fastapi import HTTPException
 from .text_static import *
 
@@ -40,8 +36,10 @@ async def get_user_bot(telegram_id: int, session: AsyncSession):
 async def handle_invitation(inviter_id: int, user_id: int, username: str, session: AsyncSession) -> None:
     """
      Функция обработки приглашения пользователя
-    :param inviter_id: id пользователя, который пригласил.
-    :param user_id: id пользователя, который получил приглашение.
+    :param inviter_id: ID пользователя, который пригласил.
+    :param username: Никнейм пользователя.
+    :param user_id: ID пользователя, который получил приглашение.
+    :param session: Асинхронная сессия
     :return:
     """
 
@@ -56,6 +54,7 @@ async def handle_invitation(inviter_id: int, user_id: int, username: str, sessio
     new_user = User(id_telegram=user_id,
                     user_name=username)
     await new_user.update_count_coins(session, 5000, f"Бонус за регистрацию", new=True)
+    await PullRepository.update_pull(session, 10000, "current_friends")
     session.add(new_user)
     await session.execute(friends.insert().values(
             friend1_id_telegram=inviter_id,
@@ -71,10 +70,10 @@ async def get_info_users(session: AsyncSession) -> dict[str: int]:
     :return:
     """
     dict_info = {}
-    count_users, count_admins = (await get_count_users(session),
-                                 await get_count_admins(session))
+    count_users, count_admins = (await UserRepository.get_count_users(session),
+                                 await UserRepository.get_count_admins(session))
     today = datetime.today().date()
-    count_users_date = await get_users_date(session, today)
+    count_users_date = await UserRepository.get_users_date(session, today)
     dict_info['Количество активных пользователей'] = count_users
     dict_info['Новых пользователей сегодня'] = count_users_date[0]
     dict_info['Новых пользователей за неделю'] = count_users_date[1]
@@ -85,15 +84,15 @@ async def get_info_users(session: AsyncSession) -> dict[str: int]:
 
 async def get_info_from_user(username: str, session: AsyncSession) -> dict[str: int | str]:
     """
-    Функция для получения информации о пользователе по его telegram_id
-    :param telegram_id:
+    Функция для получения информации о пользователе по его username
+    :param username: никнейм пользователя
     :param session:
     :return:
     """
     dict_info = {}
     try:
-        user = await get_user_by_username(username, session)
-    except HTTPException as e:
+        user = await UserRepository.get_user_by_username(username, session)
+    except HTTPException as ex:
         return dict_info
     dict_info = {
             'Телеграм id пользователя': user.id_telegram,
@@ -122,8 +121,8 @@ async def create_text_transactions(telegram_id: int, session) -> str:
     """
     text = ""
     try:
-        transactions = await get_transactions_by_id(telegram_id, 80, 0, session)
-    except HTTPException as e:
+        transactions = await UserRepository.get_transactions_by_id(telegram_id, 80, 0, session)
+    except HTTPException as ex:
         return txt_adm.user_empty_transaction
     for transaction in transactions:
         text += txt_adm.user_transaction_info.format(
@@ -131,20 +130,20 @@ async def create_text_transactions(telegram_id: int, session) -> str:
                 type_transaction=transaction.description,
                 summ=transaction.change_amount
         )
-    return text
+    return text if text else "Транзакции у данного пользователя отсутствуют"
 
 
 async def block_user_by_username(username: str, session: AsyncSession) -> bool:
     """
-    Функция для блокировки пользователя по его никнейму
+    Функция для блокировки пользователя по его Username
     :param username:
     :param session:
     :return:
     """
     try:
-        await block_user(username, session)
+        await UserRepository.block_user(username, session)
         return True
-    except HTTPException as e:
+    except HTTPException as ex:
         return False
 
 
@@ -167,9 +166,8 @@ async def similar(name_one: str, name_two: str) -> bool:
 async def create_post_user(session, bot, **kwargs) -> bool:
     """
     Функция для создания нового поста
-    :param session:
-    :param name:
-    :param photo:
+    :param session: Асинхронная сессия
+    :param bot: экземпляр запущенного бота
     """
     name = kwargs.get('name')
     url = kwargs.get('url_message')
@@ -178,20 +176,19 @@ async def create_post_user(session, bot, **kwargs) -> bool:
         date_public = datetime.today().date()
         kwargs['date_public'] = date_public
         kwargs['date_expired'] = date_public + timedelta(days=7)
-    post = await create_post(session, **kwargs)
+    post = await PostRepository.create_post(session, **kwargs)
     if active:
-        search_posts = await get_users_with_search(session)
+        search_posts = await UserRepository.get_users_with_search(session)
         await notification(search_posts, name, url, bot)
     return post.id
 
 
 async def update_active_post(session, bot, url, post_id):
-    post = await update_post(session,
-                             post_id,
-                             url_message=url,
-                             active=True,
-                             date_public=datetime.today().date())
-    search_posts = await get_users_with_search(session)
+    post = await PostRepository.get_post(session, post_id)
+    await PostRepository.update_post(session,
+                                     post_id, url_message=url,
+                                     active=True,date_public=datetime.today().date())
+    search_posts = await UserRepository.get_users_with_search(session)
     await notification(search_posts, post.name, url, bot)
 
 
@@ -199,19 +196,19 @@ async def notification(users: list[User], name, url, bot) -> None:
     for user in users:
         for post in user.search_posts:
             resemblance = await similar(name, post.name)
-            if resemblance or post.name.lower() in name.lower():
+            if resemblance or post.name.lower() in name.lower() or name.lower() in post.name.lower():
                 text = f"Появился новый товар, похожий на то, что Вы искали: *{name}*"
                 await (send_message(bot, user.id_telegram,
                                     text, await url_post_keyboard(url)))
 
 
 async def public_for_coins(telegram_id, count, session):
-    coins = await get_count_coins(session, telegram_id)
+    coins = await UserRepository.get_count_coins(session, telegram_id)
     if coins < count:
         return False
     else:
-        await change_coins_by_id(telegram_id, count,
-                                 False, None, session)
+        await UserRepository.change_coins_by_id(telegram_id, count,
+                                                False, 'Публикация поста', session)
         return True
 
 
@@ -244,8 +241,6 @@ async def create_text_for_post(data):
     return text
 
 
-
-
 async def create_text_by_post(post: Post):
     text = txt_us.info_post.format(
             name=post.name,
@@ -269,8 +264,8 @@ async def create_text_by_post(post: Post):
 async def create_statistic_message(session: AsyncSession, bot: Bot) -> str:
     count_members = await bot.get_chat_member_count(CHANNEL_ID)
     date = datetime.today().date()
-    count_tasks = await get_count_tasks(session, date)
-    count_posts = await get_count_post_by_time(session, date)
+    count_tasks = await TaskRepository.get_count_tasks(session, date)
+    count_posts = await PostRepository.get_count_post_by_time(session, date)
     text = txt_adm.post_statistic.format(
             count_sbs=count_members,
             posts_month=count_posts[2],
@@ -293,6 +288,11 @@ async def create_text_pull(pull: Pull):
 
 
 async def create_text_friends(friends: list) -> str:
+    """
+    Функция для создания текстового варианта списка друзей
+    :param friends: список пользователей
+    :return:
+    """
     text = ""
     if not friends:
         return txt_adm.user_empty_friends

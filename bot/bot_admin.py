@@ -1,28 +1,25 @@
 import os
 import logging
 import asyncio
-
-import requests
 from aiogram import Bot, Dispatcher, F
-from aiogram.types import Message, FSInputFile, CallbackQuery, KeyboardButton, WebAppInfo, ReplyKeyboardMarkup
-from aiogram.filters import Command, CommandObject
+from aiogram.client.session import aiohttp
+from aiogram.types import Message, FSInputFile, CallbackQuery
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.state import State, StatesGroup
-from sqlalchemy.ext.asyncio import AsyncSession
 from keyboards import *
 import functools
 from database import async_session
-from repository import create_user_tg, create_task, create_user_admin, get_user_tg, get_pull, set_pull_size, \
-    get_post_by_url, post_delete, get_task_by_url, task_delete, get_bank_coins
+from repository import UserRepository, TaskRepository, PostRepository, BankRepository, PullRepository
 from utils import get_info_users
-from utils.bot_utils.messages import delete_message, message_answer_process
+from utils.bot_utils.messages import message_answer_process
 from utils.bot_utils.text_static import txt_adm
-from utils.bot_utils.util import get_info_from_user, create_text_transactions, get_friends, \
+from utils.bot_utils.util import get_info_from_user, create_text_transactions, \
     block_user_by_username, valid_date, create_statistic_message, create_text_pull, create_text_friends
 
 
-async def get_async_session() -> AsyncSession:
+async def get_async_session() -> async_session:
     async with async_session() as session:
         yield session
 
@@ -82,7 +79,7 @@ def permissions_check(func):
     async def wrapper(message: Message, *args, **kwargs):
         user_id = message.from_user.id
         async for session in get_async_session():
-            user = await get_user_tg(user_id, session)
+            user = await UserRepository.get_user_tg(user_id, session)
             if not user or all((user.admin == False, user.superuser == False)):
                 await message.answer(txt_adm.message_no_access)
                 return
@@ -101,7 +98,7 @@ async def start(message: Message, session) -> None:
     user_id = message.from_user.id
     superuser = None
     async for session in get_async_session():
-        user = await get_user_tg(user_id, session)
+        user = await UserRepository.get_user_tg(user_id, session)
         if not user or all((user.admin == False, user.superuser == False)):
             await bot.send_photo(user_id, caption=txt_adm.message_no_access,
                                  photo=picture)
@@ -146,7 +143,7 @@ async def pull_info(message: Message, session, state: FSMContext) -> None:
     Функция, которая обрабатывает нажатие на кнопку 💰Пул
     """
     await state.set_state(None)
-    pull = await get_pull(session)
+    pull = await PullRepository.get_pull(session)
     if not pull:
         text = 'Текущий пулл пуст'
     else:
@@ -163,7 +160,7 @@ async def get_bank(message: Message, session, state: FSMContext) -> None:
     Функция, которая обрабатывает нажатие на кнопку 💵Банк монет
     """
     await state.set_state(None)
-    bank_summ = await get_bank_coins(session)
+    bank_summ = await BankRepository.get_bank_coins(session)
     await message_answer_process(bot, message, state,
                                  txt_adm.bank_text.format(amount=bank_summ),
                                  None, False)
@@ -237,12 +234,12 @@ async def statistic_users(callback_query: CallbackQuery, state: FSMContext) -> N
     """
     Функция обработки нажатия на inline-кнопку «Статистика по всем пользователям»
     """
+    text = ''
     async for session in get_async_session():
         dict_info = await get_info_users(session)
-    text = ''
-    for msg, value in dict_info.items():
-        text += f'{msg} - {value}\n'
-    await callback_query.message.edit_text(text=text)
+        for msg, value in dict_info.items():
+            text += f'{msg} - {value}\n'
+        await callback_query.message.edit_text(text=text)
 
 
 @dp.callback_query(lambda c: c.data.startswith('info_user'))
@@ -270,7 +267,7 @@ async def info_user(callback_query: CallbackQuery, state: FSMContext) -> None:
     }
 
     async for session in get_async_session():
-        await set_pull_size(dict_pull_sizes, session)
+        await PullRepository.set_pull_size(dict_pull_sizes, session)
     await message_answer_process(bot, callback_query, state,
                                  txt_adm.pull_set_success,
                                  None, False)
@@ -295,7 +292,7 @@ async def info_user_friends(callback_query: CallbackQuery, state: FSMContext) ->
     """
     telegram_id = int(callback_query.data.split('_')[1])
     async for session in get_async_session():
-        friends = await get_friends(telegram_id, session)
+        friends = await UserRepository.get_friends(telegram_id, session)
         text = await create_text_friends(friends)
         await message_answer_process(bot, callback_query, state,
                                      text, None, False)
@@ -322,7 +319,7 @@ async def wait_url_post_block(message: Message, state: FSMContext) -> None:
         current_url = post.split('/')
         current_url.pop(4)
         url_post = '/'.join(current_url)
-        post = await get_post_by_url(session, url_post)
+        post = await PostRepository.get_post_by_url(session, url_post)
         if not post:
             await message_answer_process(bot, message, state,
                                          'Такого сообщения в группе нет!', None, False)
@@ -330,26 +327,27 @@ async def wait_url_post_block(message: Message, state: FSMContext) -> None:
         id_message = post.url_message.split('/')[4]
         id_message_main = post.url_message_main.split('/')[4]
         file_path = os.path.join(os.getcwd(), MEDIA_DIR, post.photo)
-        response_url = requests.get(f'http://bot:8443/delete_message/{chat_id}/{id_message}')
-        if id_message_main != id_message:
-            response_main = requests.get(f'http://bot:8443/delete_message/{chat_id}/{id_message_main}')
-            if response_url.status_code == 200 and response_main.status_code == 200:
-                await message_answer_process(bot, message, state,
-                                             'Пост успешно удалён!', None, False)
+        async with aiohttp.ClientSession() as session_aio:
+            response_url = await session_aio.get(f'http://bot:8443/delete_message/{chat_id}/{id_message}')
+            if id_message_main != id_message:
+                response_main = await session_aio.get(f'http://bot:8443/delete_message/{chat_id}/{id_message_main}')
+                if response_url.status == 200 and response_main.status == 200:
+                    await message_answer_process(bot, message, state,
+                                                 'Пост успешно удалён!', None, False)
+                else:
+                    await message_answer_process(bot, message, state,
+                                                 'Пост удалить не получилось,'
+                                                 ' попробуйте сделать это вручную!', None, False)
             else:
-                await message_answer_process(bot, message, state,
-                                             'Пост удалить не получилось,'
-                                             ' попробуйте сделать это вручную!', None, False)
-        else:
-            if response_url.status_code == 200:
-                await message_answer_process(bot, message, state,
-                                             'Пост успешно удалён!', None, False)
-            else:
-                await message_answer_process(bot, message, state,
-                                             'Пост удалить не получилось,'
-                                             ' попробуйте сделать это вручную!', None, False)
+                if response_url.status == 200:
+                    await message_answer_process(bot, message, state,
+                                                 'Пост успешно удалён!', None, False)
+                else:
+                    await message_answer_process(bot, message, state,
+                                                 'Удалить пост из группы не получилось,'
+                                                 ' попробуйте сделать это вручную!', None, False)
         os.remove(file_path)
-        await post_delete(session, post.id)
+        await PostRepository.post_delete(session, post.id)
         await state.set_state(None)
 
 
@@ -360,13 +358,13 @@ async def wait_url_task_block(message: Message, state: FSMContext) -> None:
     """
     url_task = message.text
     async for session in get_async_session():
-        task = await get_task_by_url(session, url_task)
+        task = await TaskRepository.get_task_by_url(session, url_task)
         if not task:
             text = "Такого задания нет! Попробуйте ещё раз"
             await message.delete()
         else:
             text = "Задание успешно удалено!"
-        await task_delete(session, task.id)
+        await TaskRepository.task_delete(session, task.id)
         await message_answer_process(bot, message, state,
                                      text, None, False)
         await state.set_state(None)
@@ -403,7 +401,7 @@ async def add_username_admin(message: Message, session, state: FSMContext) -> No
     text = txt_adm.admin_add_success.format(name=msg)
     await message_answer_process(bot, message, state,
                                  text, None, False)
-    await create_user_admin(telegram_admin, msg, session)
+    await UserRepository.create_user_admin(telegram_admin, msg, session)
     await state.set_state(None)
 
 
@@ -452,7 +450,7 @@ async def wait_date(message: Message, session, state: FSMContext) -> None:
         type_task, description, url = (data.get('type_task'),
                                        data.get('description'),
                                        data.get('url'))
-        await create_task(url, description, type_task, date, session)
+        await TaskRepository.create_task(url, description, type_task, date, session)
         await state.set_state(None)
 
     await message_answer_process(bot, message, state,

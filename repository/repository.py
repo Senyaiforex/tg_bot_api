@@ -153,7 +153,7 @@ async def create_task(url: str, description: str, type_task: str, date: str, ses
 async def get_tasks_by_type(type_task: str, session) -> list[Task]:
     result = await session.execute(
             select(Task)
-            .where(Task.type_task == type_task)
+            .where(Task.category_id == type_task)
     )
     tasks = result.scalars().all()
     return tasks
@@ -614,7 +614,6 @@ async def get_count_posts_with_types(session: AsyncSession,
                  'week': date - timedelta(days=7),
                  'month': date - timedelta(days=30)}
     date = date_dict[type_date]
-    print(date)
     count_free = await session.execute(
             select(func.count(Post.id))
             .where(
@@ -649,7 +648,6 @@ async def get_count_posts_with_types(session: AsyncSession,
             ))
     counts_posts = [count_free.scalar(), count_token.scalar(),
                     count_coins.scalar(), count_money.scalar()]
-    print(counts_posts)
     return counts_posts
 
 
@@ -782,7 +780,6 @@ async def get_order(session, order_id):
 
 
 async def get_users_with_posts_count(session: AsyncSession):
-    # Подзапрос для получения пользователя и количества их постов
     post_alias = aliased(Post)  # Создаем алиас для таблицы Post
 
     subquery = (

@@ -2,7 +2,7 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram import Bot
 from aiogram.types import Message, FSInputFile, InlineKeyboardMarkup, CallbackQuery, KeyboardButton, ReplyKeyboardMarkup
-from repository import get_admins
+from repository import UserRepository
 import logging
 from aiogram.exceptions import TelegramNotFound
 
@@ -118,7 +118,7 @@ async def message_answer_process(bot: Bot,
 
 
 async def send_messages_for_admin(session, bot, url_post, username):
-    admins = await get_admins(session)
+    admins = await UserRepository.get_admins(session)
     text = f'От автора - @{username}' if username else ''
     for admin in admins:
         try:
