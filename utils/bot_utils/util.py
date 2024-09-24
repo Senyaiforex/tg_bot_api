@@ -50,7 +50,7 @@ async def handle_invitation(inviter_id: int, user_id: int, username: str, sessio
     if user:
         return
     await inviter.update_count_coins(session, 5000, f"Приглашение друга")
-    inviter.count_invited_friends += 1
+    await inviter.set_friends(session, 1)
     new_user = User(id_telegram=user_id,
                     user_name=username)
     await new_user.update_count_coins(session, 5000, f"Бонус за регистрацию", new=True)
@@ -100,7 +100,8 @@ async def get_info_from_user(username: str, session: AsyncSession) -> dict[str: 
             'Дата регистрации': user.registration_date.strftime('%d-%m-%Y'),
             'Количество токенов': user.count_coins,
             'Количество фарма': user.count_pharmd,
-            'Уровень': user.level,
+            'Уровень': user.rank.level,
+            'Ранг': user.rank.name,
             'Количество приглашенных друзей': user.count_invited_friends,
             'Количество покупок': user.purchase_count,
             'Количество продаж': user.sale_count,
@@ -301,6 +302,7 @@ async def create_text_friends(friends: list) -> str:
             text += txt_adm.user_friends_info.format(
                     username=friend["username"],
                     level=friend["level"],
+                    rank=friend["rank"],
                     date=friend["date_registration"]
             )
         return text

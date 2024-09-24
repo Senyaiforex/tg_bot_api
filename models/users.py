@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, String, Integer, Table, ForeignKey, Date, DateTime, Boolean
+from sqlalchemy import Column, String, Integer, Table, ForeignKey, Date, DateTime, Boolean, select
 from sqlalchemy.orm import relationship
 from database import Base, async_session
 from .posts import Post
@@ -32,7 +32,7 @@ class User(Base):
     user_name = Column(String, index=True)
     count_coins = Column(Integer, default=0)
     count_pharmd = Column(Integer, default=65_000)
-    level = Column(Integer, default=0)
+    total_coins = Column(Integer, default=0)
     count_invited_friends = Column(Integer, default=0)
     purchase_count = Column(Integer, default=0)
     sale_count = Column(Integer, default=0)
@@ -47,6 +47,7 @@ class User(Base):
     tasks = relationship("Task", secondary=users_tasks,
                          back_populates='users')
     count_tasks = Column(Integer, default=0, comment='Количество выполненных задач')
+    rank_id = Column(Integer, ForeignKey('ranks.id'), default=1)
     friends = relationship(
             'User',
             secondary=friends,
@@ -65,6 +66,17 @@ class User(Base):
         if new:
             self.count_coins = 0
         self.count_coins += amount
+        self.total_coins += amount
+        if self.rank_id != 100:
+            from .rank import Rank
+            result = await session.execute(select(Rank)
+                                              .where(Rank.id == self.rank_id + 1))
+            rank_next = result.scalars().first()
+            if all((self.count_invited_friends >= rank_next.required_friends,
+                    self.total_coins >= rank_next.required_coins,
+                    self.count_tasks >= rank_next.required_tasks)):
+                self.spinners += 3
+                self.rank_id = rank_next.id
         await session.commit()
         transaction = HistoryTransaction(
                 user_id=self.id,
@@ -72,6 +84,34 @@ class User(Base):
                 description=description
         )
         session.add(transaction)
+        await session.commit()
+
+    async def set_friends(self, session: async_session, amount: int):
+        self.count_invited_friends += amount
+        if self.rank_id != 100:
+            from .rank import Rank
+            result = await session.execute(select(Rank)
+                                              .where(Rank.id == self.rank_id + 1))
+            rank_next = result.scalars().first()
+            if all((self.count_invited_friends >= rank_next.required_friends,
+                    self.total_coins >= rank_next.required_coins,
+                    self.count_tasks >= rank_next.required_tasks)):
+                self.spinners += 3
+                self.rank_id = rank_next.id
+        await session.commit()
+
+    async def set_tasks(self, session: async_session, amount: int):
+        self.count_tasks += amount
+        if self.rank_id != 100:
+            from .rank import Rank
+            result = await session.execute(select(Rank)
+                                              .where(Rank.id == self.rank_id + 1))
+            rank_next = result.scalars().first()
+            if all((self.count_invited_friends >= rank_next.required_friends,
+                    self.total_coins >= rank_next.required_coins,
+                    self.count_tasks >= rank_next.required_tasks)):
+                self.spinners += 3
+                self.rank_id = rank_next.id
         await session.commit()
 
 

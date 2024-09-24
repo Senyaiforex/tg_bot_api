@@ -3,6 +3,7 @@ from typing import Optional, List
 from datetime import date, datetime
 from .tasks import TaskByUser, TaskOut
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import Enum
 
 
 class BaseUser(BaseModel):
@@ -22,10 +23,6 @@ class BaseUser(BaseModel):
     count_pharmd: int = Field(
             default=65_000,
             description='Количество фарма у пользователя'
-    )
-    level: int = Field(
-            default=0,
-            description='Уровень'
     )
     count_invited_friends: int = Field(
             default=0,
@@ -50,34 +47,42 @@ class BaseUser(BaseModel):
 class UserIn(BaseUser):
     ...
 
+class Rank(BaseModel):
+    id: int = Field(..., description='ID ранга')
+    rank: str = Field(default=..., description='Название ранга')
+    level: int = Field(default=..., description='Уровень')
 
-class Friend(BaseModel):
-    user_name: str = Field(default=..., description='Никнейм друга')
-    count_coins: int = Field(default=..., description='Количество монет друга')
-    level: int = Field(default=..., description='Уровень друга')
+    @field_validator('rank', mode='before')
+    def format_transaction_date(cls, v):
+        return v.name
+
+    class Config:
+        from_attributes = True
 
 
 class UserOut(BaseUser):
-    friends: Optional[List[Friend]] = Field(default=[], description='Друзья')
-    tasks: Optional[List[TaskOut]] = Field(default=[], description='Задачи')
     active: bool = Field(default=True, description='Активность')
     spinners: int = Field(
             default=0,
             description='Количество спиннеров для рулетки'
     )
     count_tasks: int = Field(default=0, description='Количество выполненных задач')
+    rank: Rank
+
     class Config:
-        from_orm = True
-        related_fields = {'friends': {'exclude': ['id_telegram', 'count_pharmd',
-                                                  'registration_date', 'purchase_count',
-                                                  'sale_count', 'count_invited_friends',
-                                                  'count_tasks', 'spinners']}}
+        from_attributes = True
 
     @field_validator('registration_date', mode='before')
     def format_transaction_date(cls, v):
         if isinstance(v, date):
             return v.strftime('%d-%m-%Y')
         return v
+
+
+class Friend(BaseModel):
+    user_name: str = Field(default=..., description='Никнейм друга')
+    count_coins: int = Field(default=..., description='Количество монет друга')
+    level: int = Field(default=..., description='Уровень друга')
 
 
 class DeleteUser(BaseModel):

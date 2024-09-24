@@ -94,7 +94,9 @@ class TextAdminData:
     user_transaction_info: str = "Дата: `{date}`, Сумма: _\r{summ}_\r, Описание: _\r{type_transaction}_\r\n"
     user_empty_friends: str = "У данного пользователя нет приглашённых друзей"
     user_friends_info: str = ("Никнейм: @{username}, "
-                              "Уровень: _\r{level}_\r, Дата регистрации: `{date}`\n")
+                              "Уровень: _\r{level}_\r, "
+                              "Ранг: _\r{rank}_\r "
+                              "Дата регистрации: `{date}`\n")
     telegram_id_invalid: str = "_\rID телеграм_\rдолжен состоять только из цифр, попробуйте ещё раз"
     username_add: str = "Введите _\rникнейм_\r пользователя, которого хотите добавить в администраторы"
     admin_add_success: str = "Пользователь @{name} добавлен в администраторы"

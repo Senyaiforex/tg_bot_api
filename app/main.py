@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, Depends, Request, HTTPException
 from repository import UserRepository, PostRepository, TaskRepository, PullRepository
 from database import engine, async_session, Base
+from fixtures import create_ranks
 from schemes import *
 from utils.app_utils.utils import categorize_tasks, create_data_posts, create_data_pull
 
@@ -20,6 +21,9 @@ from utils.app_utils.utils import categorize_tasks, create_data_posts, create_da
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    async with async_session() as session:
+        await create_ranks(session)
+        await create_categories(session)
     yield
     await engine.dispose()
 
@@ -93,8 +97,7 @@ async def get_coins(id_telegram: Annotated[int, Path(description="Telegram ID п
         ◦ 200 OK: JSON объект, содержащий количество токенов.\n
     """
     user = await UserRepository.get_user_by_telegram_id(id_telegram, session)
-    return JSONResponse(content={'count_coins': f'{user.count_coins}'},
-                        headers={'Content-Type': 'application/json'})
+    return JSONResponse(content={'count_coins': f'{user.count_coins}'})
 
 
 @app.get("/api/get_top_users")
@@ -124,7 +127,7 @@ async def get_pharmd(id_telegram: Annotated[int, Path(description="Telegram ID �
         ◦ 200 OK: JSON объект, содержащий количество фарма.\n
     """
     user = await UserRepository.get_user_by_telegram_id(id_telegram, session)
-    return JSONResponse(content={'count_pharmd': f'{user.count_pharmd}'}, headers={'Content-Type': 'application/json'})
+    return JSONResponse(content={'count_pharmd': f'{user.count_pharmd}'})
 
 
 @app.get("/api/get_transactions/{id_telegram}", response_model=list[HistoryTransactionOut])

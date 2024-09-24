@@ -2,7 +2,7 @@ from typing import List, Dict, Union
 from sqlalchemy import func
 from fastapi import HTTPException
 from sqlalchemy import select, delete
-from sqlalchemy.orm import joinedload, aliased
+from sqlalchemy.orm import joinedload, aliased, selectinload
 from models import User, HistoryTransaction, SearchPost, Post
 from datetime import date, timedelta
 from database import async_session
@@ -21,8 +21,7 @@ class UserRepository:
         """
         result = await session.execute(
                 select(User)
-                .options(joinedload(User.friends))
-                .options(joinedload(User.tasks))
+                .options(joinedload(User.rank))
                 .where(User.id_telegram == telegram_id)
         )
         user = result.scalars().first()
@@ -42,7 +41,7 @@ class UserRepository:
         """
         result = await session.execute(
                 select(User)
-                .options(joinedload(User.tasks))
+                .options(selectinload(User.tasks))
                 .where(User.id_telegram == telegram_id)
         )
         user = result.scalars().first()
@@ -62,10 +61,11 @@ class UserRepository:
         """
         result = await session.execute(
                 select(User)
-                .options(joinedload(User.friends))
-                .options(joinedload(User.tasks))
-                .options(joinedload(User.history_transactions))
-                .options(joinedload(User.posts))
+                .options(selectinload(User.friends))
+                .options(selectinload(User.tasks))
+                .options(selectinload(User.history_transactions))
+                .options(selectinload(User.posts))
+                .options(joinedload(User.rank))
                 .where(User.user_name == username)
         )
         user = result.scalars().first()
@@ -275,7 +275,7 @@ class UserRepository:
         # Находим пользователя по id_telegram
         result = await session.execute(
                 select(User)
-                .options(joinedload(User.friends))
+                .options(selectinload(User.friends).selectinload(User.rank))
                 .where(User.id_telegram == id_telegram)
         )
         user = result.scalars().first()
@@ -288,7 +288,8 @@ class UserRepository:
             friends_list.append({
                     'username': friend.user_name,
                     'count_coins': friend.count_coins,
-                    'level': friend.level,
+                    'level': friend.rank.level if friend.rank else None,
+                    'rank': friend.rank.rank.name if friend.rank else None,
                     'date_registration': friend.registration_date.strftime('%d-%m-%Y')
             })
 
@@ -459,7 +460,7 @@ class UserRepository:
         """
         query_users = await session.execute(
                 select(User)
-                .options(joinedload(User.search_posts))
+                .options(selectinload(User.search_posts))
         )
         users = query_users.unique().scalars().all()
         return users
@@ -493,7 +494,7 @@ class SearchListRepository:
         """
         result_user = await session.execute(
                 select(User)
-                .options(joinedload(User.search_posts))
+                .options(selectinload(User.search_posts))
                 .where(User.id_telegram == id_telegram)
         )
         user = result_user.scalars().first()
@@ -519,7 +520,7 @@ class SearchListRepository:
         """
         query_user = await session.execute(
                 select(User)
-                .options(joinedload(User.search_posts))
+                .options(selectinload(User.search_posts))
                 .where(User.id_telegram == telegram_id)
         )
         user = query_user.scalars().first()

@@ -96,10 +96,10 @@ async def payment_post(request):
     if order_id:
         async for session in get_async_session():
             order = await get_order(session, order_id)
-            await update_order(session, order.id, paid=True)
             post = await get_post(session, order.post_id)
-            if post.active:
+            if order.paid and post.active:
                 break
+            await update_order(session, order.id, paid=True)
             chat_id, theme_id = post.channel_id.split('_')
             date_public = datetime.today().date()
             date_expired = date_public + timedelta(days=7)

@@ -7,8 +7,7 @@ from celery import Celery
 from celery.schedules import crontab
 from bot_main import bot
 from database import async_session
-from repository import get_tasks_by_celery, get_posts_by_celery, post_update_by_celery, \
-    task_delete_by_celery
+from repository import PostRepository, TaskRepository
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -47,16 +46,16 @@ def check_tasks():
 async def work_tasks():
     async for session in get_async_session():
         today = datetime.today().date()
-        tasks = await get_tasks_by_celery(session)
+        tasks = await TaskRepository.get_tasks_by_celery(session)
         for task in tasks:
             if task.date_limit > today:
-                await task_delete_by_celery(session, task.id, active=False)
+                await TaskRepository.task_delete_by_celery(session, task.id)
 
 
 async def work_posts():
     async for session in get_async_session():
         today = datetime.today().date()
-        posts = await get_posts_by_celery(session)
+        posts = await PostRepository.get_posts_by_celery(session)
         for post in posts:
             if post.date_expired < today:
                 await bot.send_message(chat_id=post.user_telegram, parse_mode='Markdown',
@@ -71,7 +70,7 @@ async def work_posts():
                 await delete_message(bot, chat_id, id_message)
                 if id_main_message != id_message:
                     await delete_message(bot, chat_id, id_main_message)
-                await post_update_by_celery(session, post.id, active=False)
+                await PostRepository.post_update_by_celery(session, post.id, active=False)
 
 
 @app.on_after_configure.connect

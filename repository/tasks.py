@@ -1,7 +1,7 @@
 import datetime
 from sqlalchemy import func
 from sqlalchemy import select, delete
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
 from models import Task, User
 from datetime import date, datetime
@@ -46,7 +46,7 @@ class TaskRepository:
         """
         if task not in user.tasks:
             user.tasks.append(task)
-            user.count_tasks += 1
+            await user.set_tasks(session, 1)
             await session.commit()
 
     @classmethod
@@ -97,7 +97,7 @@ class TaskRepository:
         """
         result = await session.execute(
                 select(CategoryTask)
-                .options(joinedload(CategoryTask.tasks))
+                .options(selectinload(CategoryTask.tasks))
         )
         categories = result.scalars().unique().all()
         return categories
@@ -111,7 +111,7 @@ class TaskRepository:
         """
         result = await session.execute(
                 select(CategoryTask)
-                .options(joinedload(CategoryTask.tasks))
+                .options(selectinload(CategoryTask.tasks))
         )
         categories = result.scalars().all()
         return categories
