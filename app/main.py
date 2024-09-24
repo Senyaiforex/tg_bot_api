@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, Depends, Request, HTTPException
 from repository import UserRepository, PostRepository, TaskRepository, PullRepository
 from database import engine, async_session, Base
-from fixtures import create_ranks
+from fixtures import create_ranks, create_categories
 from schemes import *
 from utils.app_utils.utils import categorize_tasks, create_data_posts, create_data_pull
 
