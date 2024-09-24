@@ -14,10 +14,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, Depends, Request, HTTPException
 from repository import UserRepository, PostRepository, TaskRepository, PullRepository
 from database import engine, async_session, Base
-from fixtures import create_ranks, create_categories
+from fixtures import create_ranks, create_categories, create_tasks, create_liquid
 from schemes import *
 from utils.app_utils.utils import categorize_tasks, create_data_posts, create_data_pull
 
+TEST = True
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -26,6 +27,10 @@ async def lifespan(app: FastAPI):
     async with async_session() as session:
         await create_ranks(session)
         await create_categories(session)
+        await create_liquid(session)
+        if TEST:
+            await create_tasks(session)
+
     yield
     await engine.dispose()
 
@@ -72,7 +77,6 @@ async def get_user(id_telegram: Annotated[int, Path(description="Telegram ID Ð¿Ð
             False: (user.rank.required_coins, user.rank.required_friends, user.rank.required_tasks)
     }
     coins, friends, tasks = dict_values_level[user.rank.level < 100]
-    print(coins, friends, tasks)
     user_out = UserOut(
             **user.__dict__,
             next_level_coins=coins,

@@ -7,7 +7,10 @@ from celery import Celery
 from celery.schedules import crontab
 from bot_main import bot
 from database import async_session
-from repository import PostRepository, TaskRepository
+from repository import PostRepository, TaskRepository, UserRepository
+from bot_admin import bot as admin_bot
+from models import User
+from utils.bot_utils.text_static import txt_adm, txt_us
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,11 +29,23 @@ async def get_async_session() -> async_session:
         yield session
 
 
-async def delete_message(bot, chat_id, id_message):
+async def delete_message(bot_instance, chat_id, id_message) -> None:
     try:
-        await bot.delete_message(chat_id=chat_id, message_id=id_message)
+        await bot_instance.delete_message(chat_id=chat_id, message_id=id_message)
     except TelegramBadRequest as ex:
         pass  # логирование в файл
+
+
+async def send_message(bot_instance, chat_id, text) -> None:
+    try:
+        await bot_instance.send_message(chat_id=chat_id, text=text, parse_mode='Markdown')
+    except TelegramBadRequest as ex:
+        pass  # лог
+
+
+async def send_messages_for_admin(bot_instance, admins: list[User], text: str) -> None:
+    for admin in admins:
+        await send_message(bot_instance, chat_id=admin.id_telegram, text=text)
 
 
 @app.task
@@ -47,8 +62,11 @@ async def work_tasks():
     async for session in get_async_session():
         today = datetime.today().date()
         tasks = await TaskRepository.get_tasks_by_celery(session)
+        admins = UserRepository.get_admins(session)
         for task in tasks:
             if task.date_limit > today:
+                await send_messages_for_admin(admin_bot, admins, txt_adm.task_expired.format(name=task.description,
+                                                                                             url=task.url))
                 await TaskRepository.task_delete_by_celery(session, task.id)
 
 
@@ -58,12 +76,8 @@ async def work_posts():
         posts = await PostRepository.get_posts_by_celery(session)
         for post in posts:
             if post.date_expired < today:
-                await bot.send_message(chat_id=post.user_telegram, parse_mode='Markdown',
-                                       text=f"Ваше [объявление]({post.url_message})"
-                                            f"удалено, так как истёк срок его размещения.\n"
-                                            f"Для его продления Вам необходимо будет перейти во вкладку"
-                                            f"'Мои объявления' и опубликовать его заново, либо создать новое объявление "
-                                            f"и опубликовать его ")
+                await send_message(bot, chat_id=post.user_telegram,
+                                   text=txt_us.post_expired.format(url=post.url_message))
                 chat_id = post.channel_id.split('_')[0]
                 id_message = post.url_message.split('/')[4]
                 id_main_message = post.url_message_main.split('/')[4]
@@ -76,10 +90,10 @@ async def work_posts():
 @app.on_after_configure.connect
 def setup_periodic_tasks(sender, **kwargs):
     sender.add_periodic_task(
-            crontab(hour=16, minute=2),
-            check_posts.s(), name='add_post-every-20-00'
+            crontab(hour=16, minute=0),
+            check_posts.s(), name='check_post-every-16-00'
     )
     sender.add_periodic_task(
             crontab(hour=10, minute=30),
-            check_tasks.s(), name='add_task-every-10-30'
+            check_tasks.s(), name='check_task-every-10-30'
     )
