@@ -33,7 +33,7 @@ async def get_async_session() -> AsyncSession:
 
 
 os.makedirs(MEDIA_DIR, exist_ok=True)
-BOT_TOKEN = "7006667556:AAFzRm7LXS3VoyqCIvN5QJ-8RRsixZ9uPek"
+BOT_TOKEN = "7144580966:AAFwWIOi92vjhR6wwDuCF--GXcykbZQ-5aY"
 CHANNEL_ID = '@Buyer_Marketplace'
 bot = Bot(BOT_TOKEN)
 storage = MemoryStorage()
@@ -642,8 +642,10 @@ async def check_task_complete(telegram_id: int, task_id: int) -> bool:
     Функция для проверки выполнения задания
     """
     async for session in get_async_session():
-        user = await UserRepository.get_user_by_telegram_id(telegram_id, session)
+        user = await UserRepository.get_user_with_tasks(telegram_id, session)
         task = await TaskRepository.get_task_by_id(task_id, session)
+        if task in user.tasks:
+            return True
         if task.category_id == 1:
             if await is_user_subscribed(telegram_id, await get_channel_id_by_url(task.url)):
                 await TaskRepository.add_task(user, task, session)
