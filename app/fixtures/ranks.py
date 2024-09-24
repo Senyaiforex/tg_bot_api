@@ -1,3 +1,5 @@
+from sqlalchemy import select
+
 from database import async_session
 
 async def create_ranks(session: async_session):
@@ -7,7 +9,11 @@ async def create_ranks(session: async_session):
     :return:
     """
     from models import Rank, RankEnum
+    result = await session.execute(select(Rank).limit(1))
+    rank_exists = result.scalar_one_or_none()
 
+    if rank_exists: # ранги уже есть
+        return
     # Изначальные параметры
     initial_coins = 100_000
     initial_friends = 1

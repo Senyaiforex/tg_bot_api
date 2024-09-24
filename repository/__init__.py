@@ -1,4 +1,3 @@
-from .repository import *
 from .bank import BankRepository
 from .order import OrderRepository
 from .users import UserRepository, SearchListRepository

@@ -14,7 +14,7 @@ from bot_main import check_task_complete, public_post_in_channel, bot
 import logging
 from bot_admin import bot as bot_admin
 from database import async_session
-from repository import get_order, get_post, update_post, update_order
+from repository import OrderRepository, PostRepository
 from utils.bot_utils.messages import send_messages_for_admin
 from utils.bot_utils.util import create_text_for_post
 
@@ -95,11 +95,11 @@ async def payment_post(request):
     order_id = int(data.get('OrderId', None))
     if order_id:
         async for session in get_async_session():
-            order = await get_order(session, order_id)
-            post = await get_post(session, order.post_id)
+            order = await OrderRepository.get_order(session, order_id)
+            post = await PostRepository.get_post(session, order.post_id)
             if order.paid and post.active:
                 break
-            await update_order(session, order.id, paid=True)
+            await OrderRepository.update_order(session, order.id, paid=True)
             chat_id, theme_id = post.channel_id.split('_')
             date_public = datetime.today().date()
             date_expired = date_public + timedelta(days=7)
@@ -120,9 +120,9 @@ async def payment_post(request):
                 url_main_theme = url
             await send_message(order.user_telegram, text="Ваше объявление оплачено, размещено в группе на 7 дней",
                                url=url)
-            await update_post(session, post.id, active=True,
-                              date_expired=date_expired, date_public=date_public,
-                              url_message=url, method='money', url_message_main=url_main_theme)
+            await PostRepository.update_post(session, post.id, active=True,
+                                             date_expired=date_expired, date_public=date_public,
+                                             url_message=url, method='money', url_message_main=url_main_theme)
             await send_messages_for_admin(session, bot_admin, url, None)
 
     response_data = {'success': 'OK'}
