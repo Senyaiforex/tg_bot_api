@@ -47,6 +47,7 @@ class BaseUser(BaseModel):
 class UserIn(BaseUser):
     ...
 
+
 class Rank(BaseModel):
     id: int = Field(..., description='ID ранга')
     rank: str = Field(default=..., description='Название ранга')
@@ -68,6 +69,15 @@ class UserOut(BaseUser):
     )
     count_tasks: int = Field(default=0, description='Количество выполненных задач')
     rank: Rank
+    next_level_coins: int = Field(
+            description='Количество монет, необходимых для следующего уровня'
+    )
+    next_level_friends: int = Field(
+            description='Количество друзей, необходимых для следующего уровня'
+    )
+    next_level_tasks: int = Field(
+            description='Количество задач, необходимых для следующего уровня'
+    )
 
     class Config:
         from_attributes = True

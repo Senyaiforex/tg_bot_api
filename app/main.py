@@ -5,7 +5,9 @@ from contextlib import asynccontextmanager
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from models import users_tasks
 from models.tasks import CategoryTask
+from repository.rank import RankRepository
 from utils.app_utils import check_task_complete, create_data_tasks
 from fastapi.params import Path, Annotated, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -64,7 +66,20 @@ async def get_user(id_telegram: Annotated[int, Path(description="Telegram ID п�
         ◦ 200 OK: JSON объект, содержащий информацию о пользователе.\n
     """
     user = await UserRepository.get_user_by_telegram_id(id_telegram, session)
-    return user
+    next_rank = await RankRepository.get_next_rank(user.rank.id, session)
+    dict_values_level = {
+            True: (next_rank.required_coins, next_rank.required_friends, next_rank.required_tasks),
+            False: (user.rank.required_coins, user.rank.required_friends, user.rank.required_tasks)
+    }
+    coins, friends, tasks = dict_values_level[user.rank.level < 100]
+    print(coins, friends, tasks)
+    user_out = UserOut(
+            **user.__dict__,
+            next_level_coins=coins,
+            next_level_friends=friends,
+            next_level_tasks=tasks
+    )
+    return user_out
 
 
 @app.get("/api/friends/{id_telegram}", response_model=list[dict])
