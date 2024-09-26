@@ -1,6 +1,5 @@
 import math
-from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, date
 from typing import Any
 
 import aiohttp
@@ -51,7 +50,8 @@ class LiquidData:
 liquid_const = LiquidData()
 
 
-async def create_data_posts(posts_count: list[int], session: async_session) -> list[dict[str: Any]]:
+async def create_data_posts(session: async_session, posts_count: list[int],
+                            today_count: int | None = None) -> list[dict[str: Any],]:
     """
     Функция для создания информации по количествам опубликованных постов
     за месяц
@@ -70,19 +70,29 @@ async def create_data_posts(posts_count: list[int], session: async_session) -> l
             0: ('Посты бесплатно', liquid_instance.free_posts, 0),
             1: ('Посты за токены', liquid_instance.token_posts, 750),
             2: ('Посты за монеты', liquid_instance.coins_posts, 10000),
-            3: ('Посты за рубли', liquid_instance.money_posts, 1000)
+            3: ('Посты за рубли', liquid_instance.money_posts, 1000),
+            4: ('Посты за звёзды', liquid_instance.stars_posts, 30)
     }
     list_models = []
     for index in range(len(posts_count)):
         current_percent = int(posts_count[index] / dict_type_posts[index][1] * 100)
-        need_percent = 100 - current_percent
-
+        need_percent = max(100 - current_percent, 0)
         list_models.append({
                 "name": dict_type_posts[index][0],
                 "price": dict_type_posts[index][2],
                 "data": [current_percent, need_percent],
                 "current": posts_count[index],
                 "need": dict_type_posts[index][1]
+        })
+    if today_count or today_count == 0:
+        current_percent = int(today_count / 200 * 100)
+        need_percent = max(100 - current_percent, 0)
+        list_models.append({
+                "name": 'Посты за день',
+                "price": 0,
+                "data": [current_percent, need_percent],
+                "current": today_count,
+                "need": 200
         })
     return list_models
 
@@ -178,20 +188,22 @@ async def create_data_liquid(session: async_session) -> dict[str: int | str]:
     :rtype: dict
     """
     today = datetime.today().date()
-    free, token, coins, money = await PostRepository.get_count_posts_with_types(session,
-                                                                                today,
-                                                                                'month')
+    free, token, coins, money, stars = await PostRepository.get_count_posts_with_types(session,
+                                                                                       today,
+                                                                                       'month')
     liquid_instance = await PostRepository.get_liquid_posts(session)
     all_public_need = (liquid_instance.money_posts +  # сколько всего постов необходимо опубликовать
                        liquid_instance.token_posts +
                        liquid_instance.coins_posts +
-                       liquid_instance.free_posts)
+                       liquid_instance.free_posts +
+                       liquid_instance.stars_posts)
     paid_public_need = (liquid_instance.money_posts +  # сколько платных постов необходимо опубликовать
                         liquid_instance.token_posts +
-                        liquid_instance.coins_posts)
+                        liquid_instance.coins_posts +
+                        liquid_instance.stars_posts)
     free_public_need = liquid_instance.free_posts  # сколько бесплатных постов необходимо опубликовать
-    all_current = token + coins + money + free  # сколько опубликовано сейчас всего постов
-    paid_current = token + coins + money  # сколько опубликовано сейчас платных постов
+    all_current = token + coins + money + free + stars  # сколько опубликовано сейчас всего постов
+    paid_current = token + coins + money + stars  # сколько опубликовано сейчас платных постов
     data_liquid_posts = {
             'all_posts': {
                     'need': all_public_need,
@@ -207,7 +219,6 @@ async def create_data_liquid(session: async_session) -> dict[str: int | str]:
                     'percent': await calculate_percent(free, free_public_need)}
     }
     return data_liquid_posts
-
 
 
 async def get_friend_word(number: int) -> str:

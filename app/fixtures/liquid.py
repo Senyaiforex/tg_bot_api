@@ -13,8 +13,9 @@ async def create_liquid(session: AsyncSession):
         return
 
     liquid_start = LiquidPosts(free_posts=990,
-                               coins_posts=5,
+                               coins_posts=4,
                                money_posts=3,
-                               token_posts=2)
+                               token_posts=2,
+                               stars_posts=1)
     session.add(liquid_start)
     await session.commit()

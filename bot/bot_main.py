@@ -1,4 +1,3 @@
-import multiprocessing
 import asyncio
 import os
 import emoji
@@ -8,13 +7,13 @@ from aiogram.filters import Command, CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.state import State, StatesGroup
+from aiogram.exceptions import TelegramBadRequest
 import functools
 from bot_admin import bot as bot_admin
 from payment import get_url_payment
 from keyboards import *
 from database import async_session
-from repository import UserRepository, TaskRepository, PostRepository, OrderRepository, SearchListRepository, \
-    BankRepository, PullRepository
+from repository import *
 import subprocess
 import logging
 from utils.bot_utils.messages import process_menu_message, message_answer_process, delete_message, reply_keyboard, \
@@ -275,7 +274,8 @@ async def post_list(callback_query: CallbackQuery, state: FSMContext) -> None:
             file_path = os.path.join(os.getcwd(), MEDIA_DIR, post.photo)
             msg = await callback_query.message.answer_photo(caption=text, photo=FSInputFile(file_path),
                                                             reply_markup=await post_keyboard(post.id,
-                                                                                             post.active))
+                                                                                             post.active),
+                                                            parse_mode='Markdown')
             list_data.append(msg.message_id)
         await state.update_data(list_posts=list_data)
 
@@ -344,9 +344,20 @@ async def process_product_name(message: Message, state: FSMContext) -> None:
     dict_text = {True: txt_us.positive.format(name=message.text),
                  False: txt_us.negative}
     async for session in get_async_session():
-        search_cr = await SearchListRepository.create_search(session, user_id, message.text)
-        await state.clear()
-        await message_answer_process(bot, message, state, dict_text[search_cr], back_keyboard)
+        if contains_emoji(message.text) or len(message.text) > 75:
+            await message_answer_process(bot, message, state,
+                                         'Неправильный формат названия товара\n'
+                                         'Попробуйте ещё раз', back_keyboard)
+            return
+        try:
+            await message_answer_process(bot, message, state, dict_text[True], back_keyboard)
+        except TelegramBadRequest as ex:
+            await message_answer_process(bot, message, state,
+                                         'Неправильный формат названия товара\n'
+                                         'Попробуйте ещё раз', back_keyboard)
+        else:
+            await SearchListRepository.create_search(session, user_id, message.text)
+            await state.clear()
 
 
 def contains_emoji(text: str) -> bool:
@@ -419,14 +430,18 @@ async def process_product_price(message: Message, state: FSMContext) -> None:
     Функция обработки отправки цены на товар на маркетплейсе
     """
     dict_text = {True: txt_us.discount_price,
-                 False: "Цена должна быть числом и не должна быть меньше или равна нулю. Попробуйте ещё раз."}
-    product_price = message.text
-    is_number = product_price.isdigit() and int(product_price) > 0
+                 False: "Цена должна быть числом и не должна быть меньше или равна нулю.\n"
+                        " Попробуйте ещё раз. Вводите цену без пробелов и знаков препинания"}
+    try:
+        product_price = int(message.text.replace(' ', ''))
+        is_number = 0 < product_price < 300_000
+    except ValueError as ex:
+        is_number = False
     text = dict_text[is_number]
     await message_answer_process(bot, message, state, text, back_keyboard)
     if is_number:
         await state.set_state(PostStates.wait_discount)
-        await state.update_data(product_price=int(product_price))
+        await state.update_data(product_price=product_price)
 
 
 @dp.message(PostStates.wait_discount)
@@ -436,19 +451,23 @@ async def process_product_discount(message: Message, state: FSMContext) -> None:
     """
     dict_text = {True: txt_us.marketplace,
                  False: "Цена со скидкой(Кэшбеком) должна быть числом "
-                        "и не должна быть меньше нуля и быть меньше стоимости товара. Попробуйте ещё раз."}
+                        "и не должна быть меньше нуля и быть больше стоимости товара.\n"
+                        "Попробуйте ещё раз ввести цену(без пробелов и знаков препинания)."}
     keyboard = await marketpalce_choice()
     dict_keyboard = {True: keyboard, False: back_keyboard}
-    discount_price = message.text
     data = await state.get_data()
     price = data.get('product_price')
-    is_number = all((discount_price.isdigit(), int(discount_price) >= 0,
-                     int(100 - (int(discount_price) / price * 100)) > 15))  # Все условия соблюдены
+    try:
+        discount_price = int(message.text.replace(' ', ''))
+        is_number = 0 <= discount_price < 300_000 and int(100 - discount_price / price * 100) >= 15
+    except ValueError as ex:
+        is_number = False
     text = dict_text[is_number]
     await message_answer_process(bot, message, state, text, dict_keyboard[is_number])
     if is_number:
-        await state.update_data(price_discount=int(discount_price),
-                                discount_proc=int(100 - (int(message.text) / price * 100)))
+        await state.update_data(price_discount=discount_price,
+                                discount_proc=int(100 - discount_price / price * 100)
+                                )
         await state.set_state(PostStates.wait_marketplace)
 
 
@@ -634,6 +653,7 @@ async def again_public(callback_query: CallbackQuery, state: FSMContext) -> None
                 await message_answer_process(bot, callback_query, state,
                                              'Вы не можете опубликовать пост в этот канал бесплатно.\n'
                                              'Создайте новый пост')
+                return
             await public_and_update_post(session, callback_query, state, data, post)
         elif method == 'coins':
             success = await public_for_coins(user_id, 10000, session)
@@ -676,6 +696,18 @@ async def check_task_complete(telegram_id: int, task_id: int) -> bool:
             await PullRepository.update_pull(session, 5000, 'current_task')
             await user.update_count_coins(session, 5000, 'Выполнение задания')
             return True
+
+
+@dp.message(F.text)
+async def delete_unexpected_message(message: Message) -> None:
+    """
+    Функция для удаления ботом сообщений, которые он не ожидает,
+    или которые он не должен обрабатывать
+    Необходима для того, чтобы пользователь не засорял чат лишними сообщениями
+    :param message:
+    :return:
+    """
+    await message.delete()
 
 
 def run_web_server():

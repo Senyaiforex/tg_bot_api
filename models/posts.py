@@ -14,6 +14,7 @@ class Post(Base):
             ('coins', 'За монеты'),
             ('token', 'За токены'),
             ('money', 'За рубли'),
+            ('stars', 'За звёзды')
     ]
     __tablename__ = 'posts'
     id = Column(Integer, primary_key=True, index=True)

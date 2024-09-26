@@ -194,8 +194,17 @@ class PostRepository:
                                 Post.method == 'money'
                         )
                 ))
+        count_stars = await session.execute(
+                select(func.count(Post.id))
+                .where(
+                        and_(
+                                Post.date_public >= date,
+                                Post.method == 'stars'
+                        )
+                ))
         counts_posts = [count_free.scalar(), count_token.scalar(),
-                        count_coins.scalar(), count_money.scalar()]
+                        count_coins.scalar(), count_money.scalar(),
+                        count_stars.scalar()]
         return counts_posts
 
     @classmethod

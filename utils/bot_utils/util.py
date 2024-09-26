@@ -48,7 +48,8 @@ async def handle_invitation(inviter_id: int, user_id: int, username: str, sessio
     await inviter.update_count_coins(session, 5000, f"Приглашение друга")
     await inviter.set_friends(session, 1)
     new_user = User(id_telegram=user_id,
-                    user_name=username)
+                    user_name=username,
+                    rank_id=1)
     await new_user.update_count_coins(session, 5000, f"Бонус за регистрацию", new=True)
     await PullRepository.update_pull(session, 10000, "current_friends")
     session.add(new_user)
@@ -90,14 +91,17 @@ async def get_info_from_user(username: str, session: AsyncSession) -> dict[str: 
         user = await UserRepository.get_user_by_username(username, session)
     except HTTPException as ex:
         return dict_info
+    username = user.user_name
+    if '_' in username:
+        username.replace('_', '\_')
     dict_info = {
             'Телеграм id пользователя': user.id_telegram,
-            'Никнейм': f"@{user.user_name}",
+            'Никнейм': f"@{username}",
             'Дата регистрации': user.registration_date.strftime('%d-%m-%Y'),
             'Количество токенов': user.count_coins,
             'Количество фарма': user.count_pharmd,
             'Уровень': user.rank.level,
-            'Ранг': user.rank.name,
+            'Ранг': user.rank.rank.name,
             'Количество приглашенных друзей': user.count_invited_friends,
             'Количество покупок': user.purchase_count,
             'Количество продаж': user.sale_count,
@@ -286,7 +290,7 @@ async def create_text_pull(pull: Pull):
 
 async def create_text_friends(friends: list) -> str:
     """
-    Функция для создания текстового варианта списка друзей
+    Функция для создания текстового представления списка друзей
     :param friends: список пользователей
     :return:
     """
@@ -295,8 +299,11 @@ async def create_text_friends(friends: list) -> str:
         return txt_adm.user_empty_friends
     else:
         for friend in friends:
+            username = friend["username"]
+            if '_' in username:
+                username.replace('_', '\_')
             text += txt_adm.user_friends_info.format(
-                    username=friend["username"],
+                    username=username,
                     level=friend["level"],
                     rank=friend["rank"],
                     date=friend["date_registration"]

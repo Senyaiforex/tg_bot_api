@@ -76,6 +76,7 @@ class LiquidStates(StatesGroup):
     wait_coins = State()
     wait_money = State()
     wait_token = State()
+    wait_stars = State()
 
 
 bot = Bot(BOT_TOKEN)
@@ -199,14 +200,16 @@ async def liquid_info(message: Message, session, state: FSMContext) -> None:
     """
     await state.set_state(None)
     today = datetime.today().date()
-    free, token, coins, money = await PostRepository.get_count_posts_with_types(session,
+    free, token, coins, money, stars = await PostRepository.get_count_posts_with_types(session,
                                                                                 today,
                                                                                 'month')
     liquid_posts = await PostRepository.get_liquid_posts(session)
     dict_info = {
             'need_free': liquid_posts.free_posts, 'need_coins': liquid_posts.coins_posts,
             'need_token': liquid_posts.token_posts, 'need_money': liquid_posts.money_posts,
+            'need_stars': liquid_posts.stars_posts,
             'current_free': free, 'current_coins': coins, 'current_token': token, 'current_money': money,
+            'current_stars': stars
     }
     text = txt_adm.text_liquid.format(**dict_info)
 
@@ -476,6 +479,8 @@ async def add_username_admin(message: Message, session, state: FSMContext) -> No
     """
     msg = message.text
     data = await state.get_data()
+    if '_' in msg:
+        msg.replace('_', '\_')
     telegram_admin = data.get('telegram_admin')
     text = txt_adm.admin_add_success.format(name=msg)
     await message_answer_process(bot, message, state,
@@ -570,6 +575,8 @@ async def block_user_by_name(message: Message, state: FSMContext) -> None:
         if not block:
             text = txt_adm.user_username_invalid
         else:
+            if '_' in username:
+                username.replace('_', '\_')
             text = txt_adm.user_block_success.format(username=username)
         await message_answer_process(bot, message, state,
                                      text, back_keyboard, False)
@@ -581,7 +588,7 @@ async def process_pull(message: Message, state: FSMContext,
     """
     Функция обработки параметров пула для его добавления
     """
-    size = message.text
+    size = message.text.replace(' ', '')
     if not size.isdigit():
         text = txt_adm.add_pull_invalid
     else:
@@ -667,7 +674,7 @@ async def process_liquid(message: Message, state: FSMContext,
     """
     Функция обработки параметров ликвидности публикаций для добавления
     """
-    size = message.text
+    size = message.text.replace(' ', '')
     if not size.isdigit() or int(size) <= 0:
         text = txt_adm.liquid_invalid
     else:
@@ -706,7 +713,16 @@ async def wait_token(message: Message, state: FSMContext) -> None:
     Функция обработки значения ликвидности на посты за токены
     """
     await process_pull(message, state, 'token',
-                       LiquidStates.wait_money, ('посты за токены', 'постов за рубли'))
+                       LiquidStates.wait_stars, ('посты за токены', 'постов за звёзды'))
+
+
+@dp.message(LiquidStates.wait_stars)
+async def wait_stars(message: Message, state: FSMContext) -> None:
+    """
+    Функция обработки значения ликвидности на посты за звёзды
+    """
+    await process_pull(message, state, 'stars',
+                       LiquidStates.wait_money, ('посты за звёзды', 'постов за рубли'))
 
 
 @dp.message(LiquidStates.wait_money)
@@ -717,7 +733,7 @@ async def result_liquid(message: Message, state: FSMContext) -> None:
     """
     data = await state.get_data()
     size = message.text
-    free, token, coins = data.get('free'), data.get('token'), data.get('coins')
+    free, token, coins, stars = data.get('free'), data.get('token'), data.get('coins'), data.get('stars')
     keyboard = None
     if not size.isdigit() or int(size) <= 0:
         text = txt_adm.liquid_invalid
@@ -726,7 +742,7 @@ async def result_liquid(message: Message, state: FSMContext) -> None:
     else:
         text = txt_adm.liquid_new_success.format(
                 free=free, token=token, coins=coins,
-                money=size
+                money=size, stars=stars
         )
         keyboard = await menu_liquid_confirm()
     await state.set_state(None)
