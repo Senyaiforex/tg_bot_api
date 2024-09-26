@@ -428,7 +428,10 @@ async def wait_url_post_block(message: Message, state: FSMContext) -> None:
                     await message_answer_process(bot, message, state,
                                                  'Удалить пост из группы не получилось,'
                                                  ' попробуйте сделать это вручную!', keyboard, False)
-        os.remove(file_path)
+        try:
+            os.remove(file_path)
+        except FileNotFoundError as ex:
+            pass
         await PostRepository.post_delete(session, post.id)
         await state.set_state(None)
 

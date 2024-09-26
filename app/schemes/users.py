@@ -38,8 +38,10 @@ class BaseUser(BaseModel):
     )
     registration_date: date | str = Field(
             description='Дата регистрации',
+            default=datetime.today().date()
     )
     active: bool = Field(
+            default=True,
             description='Активность пользователя'
     )
 

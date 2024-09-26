@@ -75,7 +75,7 @@ async def create_data_posts(session: async_session, posts_count: list[int],
     }
     list_models = []
     for index in range(len(posts_count)):
-        current_percent = int(posts_count[index] / dict_type_posts[index][1] * 100)
+        current_percent = min(int(posts_count[index] / dict_type_posts[index][1] * 100), 100)
         need_percent = max(100 - current_percent, 0)
         list_models.append({
                 "name": dict_type_posts[index][0],
@@ -85,7 +85,7 @@ async def create_data_posts(session: async_session, posts_count: list[int],
                 "need": dict_type_posts[index][1]
         })
     if today_count or today_count == 0:
-        current_percent = int(today_count / 200 * 100)
+        current_percent = min(int(today_count / 200 * 100), 100)
         need_percent = max(100 - current_percent, 0)
         list_models.append({
                 "name": 'Посты за день',

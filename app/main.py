@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, Depends, Request, HTTPException
 from repository import UserRepository, PostRepository, TaskRepository, PullRepository
 from database import engine, async_session, Base
-from fixtures import create_ranks, create_categories, create_tasks, create_liquid, create_pull, create_bank
+from fixtures import *
 from schemes import *
 from utils.app_utils.utils import create_data_posts, create_data_pull, create_data_liquid, get_friend_word
 
@@ -33,6 +33,8 @@ async def lifespan(app: FastAPI):
         await create_bank(session)
         if TEST:
             await create_tasks(session)
+            await create_random_users(session)
+            await create_random_posts(session)
 
     yield
     await engine.dispose()

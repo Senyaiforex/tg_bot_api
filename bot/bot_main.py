@@ -293,7 +293,10 @@ async def del_post(callback_query: CallbackQuery, state: FSMContext) -> None:
             id_message = post.url_message.split('/')[4]
             id_main_message = post.url_message_main.split('/')[4]
             file_path = os.path.join(os.getcwd(), MEDIA_DIR, post.photo)
-            os.remove(file_path)
+            try:
+                os.remove(file_path)
+            except FileNotFoundError as ex:
+                pass
             await PostRepository.post_delete(session, id_post)
             if post.active:
                 await delete_message(bot, chat_id, id_message)

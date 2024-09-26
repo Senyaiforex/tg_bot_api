@@ -140,9 +140,9 @@ class UserRepository:
                 user_name=user.user_name,
                 count_coins=user.count_coins,
                 count_pharmd=user.count_pharmd,
-                count_invited_friends=user.count_invited_friends,
-                purchase_count=user.purchase_count,
-                sale_count=user.sale_count,
+                count_invited_friends=0,
+                purchase_count=0,
+                sale_count=0,
         )
         result = await session.execute(select(User). \
                                        where(User.id_telegram == new_user.id_telegram))
