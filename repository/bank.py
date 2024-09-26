@@ -30,8 +30,7 @@ class BankRepository:
         stmt = (
                 update(Bank).
                 where(Bank.id == bank_id).
-                values(coins=Bank.coins + amount).
-                execution_options(synchronize_session="fetch")
+                values(coins=Bank.coins + amount)
         )
 
         await session.execute(stmt)

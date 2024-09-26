@@ -45,10 +45,6 @@ async def handle_invitation(inviter_id: int, user_id: int, username: str, sessio
 
     inviter = await session.execute(select(User).where(User.id_telegram == inviter_id))
     inviter = inviter.scalars().first()
-    query = await session.execute(select(User).filter(User.id_telegram == user_id))
-    user = query.scalars().one_or_none()
-    if user:
-        return
     await inviter.update_count_coins(session, 5000, f"Приглашение друга")
     await inviter.set_friends(session, 1)
     new_user = User(id_telegram=user_id,
