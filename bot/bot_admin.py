@@ -1,6 +1,8 @@
 import os
 import logging
 import asyncio
+from datetime import datetime
+
 from aiogram import Bot, Dispatcher, F
 from aiogram.client.session import aiohttp
 from aiogram.types import Message, FSInputFile, CallbackQuery
@@ -69,6 +71,13 @@ class TaskStates(StatesGroup):
     wait_url_delete = State()
 
 
+class LiquidStates(StatesGroup):
+    wait_free = State()
+    wait_coins = State()
+    wait_money = State()
+    wait_token = State()
+
+
 bot = Bot(BOT_TOKEN)
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
@@ -123,6 +132,22 @@ async def inline_buttons_menu(message: Message, session, state: FSMContext) -> N
     await message_answer_process(bot, message, state, text, keyboard, False)
 
 
+@dp.message(F.text == "Вернуться")
+async def back_to_main(message: Message, state: FSMContext) -> None:
+    await state.set_state(state=None)  # Завершаем текущее состояние
+    user_id = message.from_user.id
+    superuser = None
+    async for session in get_async_session():
+        user = await UserRepository.get_user_tg(user_id, session)
+        if not user or all((user.admin == False, user.superuser == False)):
+            await bot.send_message(user_id, text=txt_adm.message_no_access)
+            return
+        superuser = user.superuser
+    text = txt_adm.message_superuser if superuser else txt_adm.message_for_admin
+    keyboard = await menu_admin(superuser)
+    await message.answer(text=text, reply_markup=keyboard)
+
+
 @dp.message(F.text == '👥Добавить администратора')
 @permissions_check
 async def inline_buttons_menu(message: Message, session, state: FSMContext) -> None:
@@ -132,7 +157,7 @@ async def inline_buttons_menu(message: Message, session, state: FSMContext) -> N
     await state.set_state(None)
     await message_answer_process(bot, message, state,
                                  txt_adm.add_telegram,
-                                 None, False)
+                                 back_keyboard, False)
     await state.set_state(States.wait_telegram_admin)
 
 
@@ -163,7 +188,30 @@ async def get_bank(message: Message, session, state: FSMContext) -> None:
     bank_summ = await BankRepository.get_bank_coins(session)
     await message_answer_process(bot, message, state,
                                  txt_adm.bank_text.format(amount=bank_summ),
-                                 None, False)
+                                 back_keyboard, False)
+
+
+@dp.message(F.text == '📔Ликвидность на публикации')
+@permissions_check
+async def liquid_info(message: Message, session, state: FSMContext) -> None:
+    """
+    Функция, которая обрабатывает нажатие на кнопку 📔Ликвидность на публикации
+    """
+    await state.set_state(None)
+    today = datetime.today().date()
+    free, token, coins, money = await PostRepository.get_count_posts_with_types(session,
+                                                                                today,
+                                                                                'month')
+    liquid_posts = await PostRepository.get_liquid_posts(session)
+    dict_info = {
+            'need_free': liquid_posts.free_posts, 'need_coins': liquid_posts.coins_posts,
+            'need_token': liquid_posts.token_posts, 'need_money': liquid_posts.money_posts,
+            'current_free': free, 'current_coins': coins, 'current_token': token, 'current_money': money,
+    }
+    text = txt_adm.text_liquid.format(**dict_info)
+
+    await message_answer_process(bot, message, state,
+                                 text, await liquid_posts_keyboard(), False)
 
 
 @dp.message(F.text == '🚫Блокировать')
@@ -175,7 +223,7 @@ async def block_user(message: Message, session, state: FSMContext) -> None:
     await state.set_state(None)
     await message_answer_process(bot, message, state,
                                  txt_adm.block_username,
-                                 None, False)
+                                 back_keyboard, False)
     await state.set_state(StatesInfo.wait_username_block)
 
 
@@ -188,7 +236,7 @@ async def post_delete_full(message: Message, session, state: FSMContext) -> None
     await state.set_state(None)
     await message_answer_process(bot, message, state,
                                  txt_adm.post_delete_url,
-                                 None, False)
+                                 back_keyboard, False)
     await state.set_state(PostStates.wait_url)
 
 
@@ -201,7 +249,7 @@ async def post_delete_full(message: Message, session, state: FSMContext) -> None
     await state.set_state(None)
     await message_answer_process(bot, message, state,
                                  txt_adm.task_delete_url,
-                                 None, False)
+                                 back_keyboard, False)
     await state.set_state(TaskStates.wait_url_delete)
 
 
@@ -212,8 +260,19 @@ async def set_pull(callback_query: CallbackQuery, state: FSMContext) -> None:
     """
     await message_answer_process(bot, callback_query, state,
                                  txt_adm.farming,
-                                 None, False)
+                                 back_keyboard, False)
     await state.set_state(SetPull.wait_farming)
+
+
+@dp.callback_query(lambda c: c.data == 'set_liquid')
+async def set_liquid(callback_query: CallbackQuery, state: FSMContext) -> None:
+    """
+    Функция обработки нажатия на inline-кнопку «Изменить пул ликвидности»
+    """
+    await message_answer_process(bot, callback_query, state,
+                                 txt_adm.free,
+                                 back_keyboard, False)
+    await state.set_state(LiquidStates.wait_free)
 
 
 @dp.callback_query(lambda c: c.data.startswith('task'))
@@ -223,7 +282,7 @@ async def add_task(callback_query: CallbackQuery, state: FSMContext) -> None:
     """
     await message_answer_process(bot, callback_query, state,
                                  txt_adm.task_description,
-                                 None, False)
+                                 back_keyboard, False)
     type_task = callback_query.data.split('_')[1]
     await state.set_state(States.wait_descript)
     await state.update_data(type_task=type_task)
@@ -249,12 +308,12 @@ async def info_user(callback_query: CallbackQuery, state: FSMContext) -> None:
     """
     await message_answer_process(bot, callback_query, state,
                                  txt_adm.info_username,
-                                 None, False)
+                                 back_keyboard, False)
     await state.set_state(StatesInfo.wait_username)
 
 
 @dp.callback_query(lambda c: c.data.startswith('confirm_pull'))
-async def info_user(callback_query: CallbackQuery, state: FSMContext) -> None:
+async def confirm_pull(callback_query: CallbackQuery, state: FSMContext) -> None:
     """
     Функция обработки нажатия на inline-кнопку «Да»
     которая подтверждает установление нового пулла
@@ -270,7 +329,26 @@ async def info_user(callback_query: CallbackQuery, state: FSMContext) -> None:
         await PullRepository.set_pull_size(dict_pull_sizes, session)
     await message_answer_process(bot, callback_query, state,
                                  txt_adm.pull_set_success,
-                                 None, False)
+                                 back_keyboard, False)
+
+
+@dp.callback_query(lambda c: c.data.startswith('confirm_liquid'))
+async def confirm_liquid(callback_query: CallbackQuery, state: FSMContext) -> None:
+    """
+    Функция обработки нажатия на inline-кнопку «Да»
+    которая подтверждает установление нового пула ликвидности публикаций
+    """
+    data = await state.get_data()
+    dict_liquid_sizes = {
+            'free_posts': data.get('free'), 'coins_posts': data.get('coins'),
+            'money_posts': data.get('money'), 'token_posts': data.get('token'),
+    }
+
+    async for session in get_async_session():
+        await PostRepository.update_liquid_posts(session, **dict_liquid_sizes)
+    await message_answer_process(bot, callback_query, state,
+                                 "Установлено новое значение пула ликвидности!",
+                                 back_keyboard, False)
 
 
 @dp.callback_query(lambda c: c.data.startswith('transactions'))
@@ -282,7 +360,7 @@ async def info_user(callback_query: CallbackQuery, state: FSMContext) -> None:
     async for session in get_async_session():
         text = await create_text_transactions(telegram_id, session)
         await message_answer_process(bot, callback_query, state,
-                                     text, None, False)
+                                     text, back_keyboard, False)
 
 
 @dp.callback_query(lambda c: c.data.startswith('friends'))
@@ -295,7 +373,7 @@ async def info_user_friends(callback_query: CallbackQuery, state: FSMContext) ->
         friends = await UserRepository.get_friends(telegram_id, session)
         text = await create_text_friends(friends)
         await message_answer_process(bot, callback_query, state,
-                                     text, None, False)
+                                     text, back_keyboard, False)
 
 
 @dp.callback_query(lambda c: c.data == 'info_posts')
@@ -306,7 +384,7 @@ async def info_posts(callback_query: CallbackQuery, state: FSMContext) -> None:
     async for session in get_async_session():
         text = await create_statistic_message(session, bot)
         await message_answer_process(bot, callback_query, state,
-                                     text, None, False)
+                                     text, back_keyboard, False)
 
 
 @dp.message(PostStates.wait_url)
@@ -327,25 +405,26 @@ async def wait_url_post_block(message: Message, state: FSMContext) -> None:
         id_message = post.url_message.split('/')[4]
         id_message_main = post.url_message_main.split('/')[4]
         file_path = os.path.join(os.getcwd(), MEDIA_DIR, post.photo)
+        keyboard = back_keyboard
         async with aiohttp.ClientSession() as session_aio:
             response_url = await session_aio.get(f'http://bot:8443/delete_message/{chat_id}/{id_message}')
             if id_message_main != id_message:
                 response_main = await session_aio.get(f'http://bot:8443/delete_message/{chat_id}/{id_message_main}')
                 if response_url.status == 200 and response_main.status == 200:
                     await message_answer_process(bot, message, state,
-                                                 'Пост успешно удалён!', None, False)
+                                                 'Пост успешно удалён!', keyboard, False)
                 else:
                     await message_answer_process(bot, message, state,
                                                  'Пост удалить не получилось,'
-                                                 ' попробуйте сделать это вручную!', None, False)
+                                                 ' попробуйте сделать это вручную!', keyboard, False)
             else:
                 if response_url.status == 200:
                     await message_answer_process(bot, message, state,
-                                                 'Пост успешно удалён!', None, False)
+                                                 'Пост успешно удалён!', keyboard, False)
                 else:
                     await message_answer_process(bot, message, state,
                                                  'Удалить пост из группы не получилось,'
-                                                 ' попробуйте сделать это вручную!', None, False)
+                                                 ' попробуйте сделать это вручную!', keyboard, False)
         os.remove(file_path)
         await PostRepository.post_delete(session, post.id)
         await state.set_state(None)
@@ -366,7 +445,7 @@ async def wait_url_task_block(message: Message, state: FSMContext) -> None:
             text = "Задание успешно удалено!"
         await TaskRepository.task_delete(session, task.id)
         await message_answer_process(bot, message, state,
-                                     text, None, False)
+                                     text, back_keyboard, False)
         await state.set_state(None)
 
 
@@ -385,7 +464,7 @@ async def add_telegram_admin(message: Message, session, state: FSMContext) -> No
         await state.set_state(States.wait_username)
         await state.update_data(telegram_admin=int(msg))
     await message_answer_process(bot, message, state,
-                                 text, None, False)
+                                 text, back_keyboard, False)
 
 
 @dp.message(States.wait_username)
@@ -400,7 +479,7 @@ async def add_username_admin(message: Message, session, state: FSMContext) -> No
     telegram_admin = data.get('telegram_admin')
     text = txt_adm.admin_add_success.format(name=msg)
     await message_answer_process(bot, message, state,
-                                 text, None, False)
+                                 text, back_keyboard, False)
     await UserRepository.create_user_admin(telegram_admin, msg, session)
     await state.set_state(None)
 
@@ -413,7 +492,7 @@ async def wait_description(message: Message, state: FSMContext) -> None:
     description = message.text
     text = txt_adm.task_add_url
     await message_answer_process(bot, message, state,
-                                 text, None, False)
+                                 text, back_keyboard, False)
     await state.update_data(description=description)
     await state.set_state(States.wait_url)
 
@@ -432,7 +511,7 @@ async def wait_url(message: Message, session, state: FSMContext) -> None:
         await state.update_data(url=url)
         await state.set_state(States.wait_date)
     await message_answer_process(bot, message, state,
-                                 text, None, False)
+                                 text, back_keyboard, False)
 
 
 @dp.message(States.wait_date)
@@ -454,7 +533,7 @@ async def wait_date(message: Message, session, state: FSMContext) -> None:
         await state.set_state(None)
 
     await message_answer_process(bot, message, state,
-                                 text, None, False)
+                                 text, back_keyboard, False)
 
 
 @dp.message(StatesInfo.wait_username)
@@ -475,7 +554,7 @@ async def username_info(message: Message, state: FSMContext) -> None:
                 text += f'{msg} - {value}\n'
             keyboard = await user_info_keyboard(dict_info['Телеграм id пользователя'])
         await message_answer_process(bot, message, state,
-                                     text, keyboard, False)
+                                     text, keyboard if keyboard else back_keyboard, False)
         await state.set_state(None)
 
 
@@ -493,14 +572,14 @@ async def block_user_by_name(message: Message, state: FSMContext) -> None:
         else:
             text = txt_adm.user_block_success.format(username=username)
         await message_answer_process(bot, message, state,
-                                     text, None, False)
+                                     text, back_keyboard, False)
         await state.set_state(None)
 
 
 async def process_pull(message: Message, state: FSMContext,
                        data_key, next_state, prompt_text):
     """
-    Функция обработки параметров пулла для его добавления
+    Функция обработки параметров пула для его добавления
     """
     size = message.text
     if not size.isdigit():
@@ -514,13 +593,13 @@ async def process_pull(message: Message, state: FSMContext,
     await state.set_state(next_state)
     await state.update_data(**{data_key: size})
     await message_answer_process(bot, message, state,
-                                 text, None, False)
+                                 text, back_keyboard, False)
 
 
 @dp.message(SetPull.wait_farming)
 async def wait_farm(message: Message, state: FSMContext) -> None:
     """
-    Функция обработки значения пулла на фарминг
+    Функция обработки значения пула на фарминг
     """
     await process_pull(message, state, 'farming',
                        SetPull.wait_task, ('фарминг', 'задания'))
@@ -529,7 +608,7 @@ async def wait_farm(message: Message, state: FSMContext) -> None:
 @dp.message(SetPull.wait_task)
 async def wait_task(message: Message, state: FSMContext) -> None:
     """
-    Функция обработки значения пулла на задания
+    Функция обработки значения пула на задания
     """
     await process_pull(message, state, 'task',
                        SetPull.wait_friends, ('задания', 'друзей'))
@@ -538,7 +617,7 @@ async def wait_task(message: Message, state: FSMContext) -> None:
 @dp.message(SetPull.wait_friends)
 async def wait_friends(message: Message, state: FSMContext) -> None:
     """
-    Функция обработки значения пулла на друзей
+    Функция обработки значения пула на друзей
     """
     await process_pull(message, state, 'friends',
                        SetPull.wait_plan, ('друзей', 'краудсорсинг'))
@@ -547,7 +626,7 @@ async def wait_friends(message: Message, state: FSMContext) -> None:
 @dp.message(SetPull.wait_plan)
 async def wait_plan(message: Message, state: FSMContext) -> None:
     """
-    Функция обработки значения пулла на краудсорсинг
+    Функция обработки значения пула на краудсорсинг
     """
     await process_pull(message, state, 'plan',
                        SetPull.wait_coins, ('краудсорсинг', 'монеты'))
@@ -556,8 +635,8 @@ async def wait_plan(message: Message, state: FSMContext) -> None:
 @dp.message(SetPull.wait_coins)
 async def wait_coins(message: Message, state: FSMContext) -> None:
     """
-    Функция обработки значения пулла на монеты
-    если значение валидно, то создаётся новый пулл в базе данных
+    Функция обработки значения пула на монеты
+    если значение валидно, то создаётся новый пул в базе данных
     """
     data = await state.get_data()
     size = message.text
@@ -580,7 +659,80 @@ async def wait_coins(message: Message, state: FSMContext) -> None:
     await state.set_state(None)
     await state.update_data(coins=size)
     await message_answer_process(bot, message, state,
-                                 text, keyboard, False)
+                                 text, keyboard if keyboard else back_keyboard, False)
+
+
+async def process_liquid(message: Message, state: FSMContext,
+                         data_key, next_state, prompt_text):
+    """
+    Функция обработки параметров ликвидности публикаций для добавления
+    """
+    size = message.text
+    if not size.isdigit() or int(size) <= 0:
+        text = txt_adm.liquid_invalid
+    else:
+        text = txt_adm.liquid_input_success.format(
+                size=size,
+                key=prompt_text[0],
+                next_key=prompt_text[1]
+        )
+    await state.set_state(next_state)
+    await state.update_data(**{data_key: size})
+    await message_answer_process(bot, message, state,
+                                 text, back_keyboard, False)
+
+
+@dp.message(LiquidStates.wait_free)
+async def wait_free(message: Message, state: FSMContext) -> None:
+    """
+    Функция обработки значения ликвидности на бесплатные посты
+    """
+    await process_pull(message, state, 'free',
+                       LiquidStates.wait_coins, ('посты бесплатно', 'постов за монеты'))
+
+
+@dp.message(LiquidStates.wait_coins)
+async def wait_coins(message: Message, state: FSMContext) -> None:
+    """
+    Функция обработки значения ликвидности на посты за монеты
+    """
+    await process_pull(message, state, 'coins',
+                       LiquidStates.wait_token, ('посты за монеты', 'постов за токены'))
+
+
+@dp.message(LiquidStates.wait_token)
+async def wait_token(message: Message, state: FSMContext) -> None:
+    """
+    Функция обработки значения ликвидности на посты за токены
+    """
+    await process_pull(message, state, 'token',
+                       LiquidStates.wait_money, ('посты за токены', 'постов за рубли'))
+
+
+@dp.message(LiquidStates.wait_money)
+async def result_liquid(message: Message, state: FSMContext) -> None:
+    """
+    Функция обработки значения ликвидности постов за рубли
+    если значение валидно, то ликвидность на публикацию постов обновляется в базе данных
+    """
+    data = await state.get_data()
+    size = message.text
+    free, token, coins = data.get('free'), data.get('token'), data.get('coins')
+    keyboard = None
+    if not size.isdigit() or int(size) <= 0:
+        text = txt_adm.liquid_invalid
+    elif not all((free, token, coins)):
+        text = txt_adm.liquid_empty
+    else:
+        text = txt_adm.liquid_new_success.format(
+                free=free, token=token, coins=coins,
+                money=size
+        )
+        keyboard = await menu_liquid_confirm()
+    await state.set_state(None)
+    await state.update_data(money=size)
+    await message_answer_process(bot, message, state,
+                                 text, keyboard if keyboard else back_keyboard, False)
 
 
 async def main():

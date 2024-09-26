@@ -335,14 +335,14 @@ class UserRepository:
         :rtype: list[dict]
         """
         result = await session.execute(
-                select(User.id_telegram, User.user_name, User.count_coins)
+                select(User.id_telegram, User.user_name, User.total_coins)
                 .limit(limit)
                 .offset(offset)
-                .order_by(User.count_coins.desc())
+                .order_by(User.total_coins.desc())
         )
         users = result.fetchall()
         users_list = [
-                dict(id_telegram=row[0], user_name=row[1], count_coins=row[2])
+                dict(id_telegram=row[0], user_name=row[1], total_coins=row[2])
                 for row in users
         ]
 

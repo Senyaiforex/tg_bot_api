@@ -19,7 +19,8 @@ async def menu_admin(superuser: bool):
     if superuser:
         menu_buttons.append([KeyboardButton(text='👥Добавить администратора'),
                              KeyboardButton(text='💰Пул')])
-        menu_buttons.append([KeyboardButton(text='💵Банк монет')])
+        menu_buttons.append([KeyboardButton(text='💵Банк монет'),
+                             KeyboardButton(text='📔Ликвидность на публикации')])
     keyboard = ReplyKeyboardMarkup(
             keyboard=menu_buttons, is_persistent=True,
             one_time_keyboard=False, resize_keyboard=True
@@ -27,7 +28,7 @@ async def menu_admin(superuser: bool):
     return keyboard
 
 
-async def inline_statistics():
+async def inline_statistics() -> InlineKeyboardMarkup:
     """
     Создаёт inline кнопки для просмотра статистики
     :return:
@@ -43,7 +44,7 @@ async def inline_statistics():
     return keyboard
 
 
-async def user_info_keyboard(telegram_id):
+async def user_info_keyboard(telegram_id) -> InlineKeyboardMarkup:
     """
     Создаёт inline кнопки для просмотра статистики по отдельному пользователю
     :return:
@@ -58,13 +59,13 @@ async def user_info_keyboard(telegram_id):
     return keyboard
 
 
-async def pull_keyboard():
+async def pull_keyboard() -> InlineKeyboardMarkup:
     """
     Создаёт кнопку для создания пула
     :return:
     """
     menu_inline_buttons = [
-            [InlineKeyboardButton(text='Установить пулл', callback_data='set_pull')]
+            [InlineKeyboardButton(text='Установить пул', callback_data='set_pull')]
     ]
     keyboard = InlineKeyboardMarkup(
             inline_keyboard=menu_inline_buttons,
@@ -72,7 +73,7 @@ async def pull_keyboard():
     return keyboard
 
 
-async def select_type_task():
+async def select_type_task() -> InlineKeyboardMarkup:
     """
     Создаёт inline кнопки для создания задания
     :return:
@@ -92,7 +93,7 @@ async def select_type_task():
     return keyboard
 
 
-async def pull_inline():
+async def pull_inline() -> InlineKeyboardMarkup:
     """
     Создаёт inline кнопки для создания задания
     :return:
@@ -107,7 +108,7 @@ async def pull_inline():
     return keyboard
 
 
-async def menu_pull_confirm():
+async def menu_pull_confirm() -> InlineKeyboardMarkup:
     """
     Создаёт inline кнопки для подтверждения изменения пула
     :return:
@@ -120,3 +121,38 @@ async def menu_pull_confirm():
             inline_keyboard=menu_inline_buttons,
     )
     return keyboard
+
+
+async def liquid_posts_keyboard() -> InlineKeyboardMarkup:
+    """
+    Создаёт inline кнопку для администратора для изменения
+    пула ликвидности
+    :return:
+    """
+    menu_inline_buttons = [
+            [InlineKeyboardButton(text='Изменить пул ликвидности', callback_data='set_liquid')]
+    ]
+    keyboard = InlineKeyboardMarkup(
+            inline_keyboard=menu_inline_buttons,
+    )
+    return keyboard
+
+
+async def menu_liquid_confirm() -> InlineKeyboardMarkup:
+    """
+    Создаёт inline кнопки для подтверждения изменения ликвидности
+    :return:
+    """
+    menu_inline_buttons = [
+            [InlineKeyboardButton(text='Да', callback_data='confirm_liquid'),
+             InlineKeyboardButton(text='Нет', callback_data='set_liquid')]
+    ]
+    keyboard = InlineKeyboardMarkup(
+            inline_keyboard=menu_inline_buttons,
+    )
+    return keyboard
+
+
+back_button = [KeyboardButton(text="Вернуться")]
+back_keyboard = ReplyKeyboardMarkup(resize_keyboard=True,
+                                    keyboard=[back_button])

@@ -12,8 +12,9 @@ async def create_liquid(session: AsyncSession):
     if liquid_current:  # ликвидность уже задана
         return
 
-    liquid_start = LiquidPosts(all_posts=1000,
-                               free_posts=990,
-                               paid_posts=10)
+    liquid_start = LiquidPosts(free_posts=990,
+                               coins_posts=5,
+                               money_posts=3,
+                               token_posts=2)
     session.add(liquid_start)
     await session.commit()

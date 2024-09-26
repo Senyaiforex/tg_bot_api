@@ -4,7 +4,7 @@ from datetime import date, datetime
 from .tasks import TaskByUser, TaskOut
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import Enum
-
+from .rank import Rank
 
 class BaseUser(BaseModel):
     id_telegram: int = Field(
@@ -47,20 +47,6 @@ class BaseUser(BaseModel):
 class UserIn(BaseUser):
     ...
 
-
-class Rank(BaseModel):
-    id: int = Field(..., description='ID ранга')
-    rank: str = Field(default=..., description='Название ранга')
-    level: int = Field(default=..., description='Уровень')
-
-    @field_validator('rank', mode='before')
-    def format_transaction_date(cls, v):
-        return v.name
-
-    class Config:
-        from_attributes = True
-
-
 class UserOut(BaseUser):
     active: bool = Field(default=True, description='Активность')
     spinners: int = Field(
@@ -69,15 +55,15 @@ class UserOut(BaseUser):
     )
     count_tasks: int = Field(default=0, description='Количество выполненных задач')
     rank: Rank
-    next_level_coins: int = Field(
-            description='Количество монет, необходимых для следующего уровня'
-    )
-    next_level_friends: int = Field(
-            description='Количество друзей, необходимых для следующего уровня'
-    )
-    next_level_tasks: int = Field(
-            description='Количество задач, необходимых для следующего уровня'
-    )
+    # next_level_coins: int = Field(
+    #         description='Количество монет, необходимых для следующего уровня'
+    # )
+    # next_level_friends: int = Field(
+    #         description='Количество друзей, необходимых для следующего уровня'
+    # )
+    # next_level_tasks: int = Field(
+    #         description='Количество задач, необходимых для следующего уровня'
+    # )
 
     class Config:
         from_attributes = True

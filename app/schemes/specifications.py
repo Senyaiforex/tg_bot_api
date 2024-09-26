@@ -1,17 +1,18 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
 
 class ChangeCoins(BaseModel):
-    amount: int
-    description: str
-    add: bool
+    amount: int = Field(gt=0, description='Количество монет')
+    description: str = Field(description='Описание транзакции')
+    add: bool = Field(description='Добавить или вычесть(True or False)')
 
 class ChangeSpinners(BaseModel):
-    amount: int
-    add: bool
+    amount: int = Field(gt=0, description='Количество спиннеров')
+    add: bool = Field(gt=0, description='Добавить или вычесть(True or False)')
 
 class ChangePharmd(BaseModel):
-    amount: int
-    add: bool
+    amount: int = Field(gt=0, description='Количество фарма')
+    add: bool = Field(description='Добавить или вычесть(True or False)')
 
 
 class ChangeLevel(BaseModel):

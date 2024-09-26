@@ -14,11 +14,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, Depends, Request, HTTPException
 from repository import UserRepository, PostRepository, TaskRepository, PullRepository
 from database import engine, async_session, Base
-from fixtures import create_ranks, create_categories, create_tasks, create_liquid
+from fixtures import create_ranks, create_categories, create_tasks, create_liquid, create_pull, create_bank
 from schemes import *
-from utils.app_utils.utils import categorize_tasks, create_data_posts, create_data_pull
+from utils.app_utils.utils import create_data_posts, create_data_pull, create_data_liquid, get_friend_word
 
 TEST = True
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -28,6 +29,8 @@ async def lifespan(app: FastAPI):
         await create_ranks(session)
         await create_categories(session)
         await create_liquid(session)
+        await create_pull(session)
+        await create_bank(session)
         if TEST:
             await create_tasks(session)
 
@@ -71,19 +74,37 @@ async def get_user(id_telegram: Annotated[int, Path(description="Telegram ID п�
         ◦ 200 OK: JSON объект, содержащий информацию о пользователе.\n
     """
     user = await UserRepository.get_user_by_telegram_id(id_telegram, session)
+    return user
+
+
+@app.get("/api/get_rank_info/{id_telegram}", response_model=RankInfoOut)
+async def get_rank_info(id_telegram: Annotated[int, Path(description="Telegram ID пользователя", gt=0)],
+                        session=Depends(get_async_session)):
+    """
+    • Описание: Возвращает информацию о текущем ранге пользователя и сколько
+                необходимо набрать монет и выолнить задач для получения следующего ранга.\n
+    • Параметры:\n
+        ◦ id_telegram (параметр пути, int): Telegram ID пользователя.\n
+    • Ответ:\n
+        ◦ 200 OK: JSON объект, содержащий информацию о текущем ранге пользователя и
+            необходимых условий для получения следующего ранга.\n
+    """
+    user = await UserRepository.get_user_by_telegram_id(id_telegram, session)
     next_rank = await RankRepository.get_next_rank(user.rank.id, session)
-    dict_values_level = {
-            True: (next_rank.required_coins, next_rank.required_friends, next_rank.required_tasks),
-            False: (user.rank.required_coins, user.rank.required_friends, user.rank.required_tasks)
+    friend_word = await get_friend_word(next_rank.required_friends)
+    dict_condition = {
+            next_rank.required_coins: (f"Заработать {next_rank.required_coins:,} монет"
+                                       .replace(',', ' '), 'coins'),
+            next_rank.required_friends: (f"Пригласить {next_rank.required_friends} " + friend_word,
+                                         'friends'),
+            next_rank.required_tasks: (f"Выполнить {next_rank.required_tasks} задач",
+                                       'tasks')
     }
-    coins, friends, tasks = dict_values_level[user.rank.level < 100]
-    user_out = UserOut(
-            **user.__dict__,
-            next_level_coins=coins,
-            next_level_friends=friends,
-            next_level_tasks=tasks
-    )
-    return user_out
+    conditions = [ConditionOut(type=value[1],
+                               description=value[0],
+                               target=key) for key, value in dict_condition.items()]
+    return RankInfoOut(**user.rank.__dict__,
+                       conditions=conditions)
 
 
 @app.get("/api/friends/{id_telegram}", response_model=list[dict])
@@ -222,15 +243,31 @@ async def get_count_posts_by_type(session=Depends(get_async_session)):
     • Параметры:\n
         ◦ нет\n
     • Ответ:\n
-        ◦ 200 OK: JSON объект, содержащий количество продавцов sellers и покупателей buyers
+        ◦ 200 OK: JSON объект, содержащий количество опубликованных постов
     """
 
     date_today = datetime.today().date()
     posts_count = await PostRepository.get_count_posts_with_types(session, date_today, 'month')
-    data = await create_data_posts(posts_count)
+    data = await create_data_posts(posts_count, session)
 
     return [PostsByType(**inst) for inst in data]
 
+@app.get('/api/ranks_list', response_model=list[RankOutInfo])
+async def get_all_ranks(session: AsyncSession = Depends(get_async_session)):
+    """
+    • Описание: Метод для получения информации обо всех рангах
+    • Параметры:\n
+        ◦ нет\n
+    • Ответ:\n
+        'Параметры ранга'
+            id - ID ранга
+            rank - Название ранга
+            level - Уровень ранга
+            required_coins - требуемое количество монет
+        ◦ 200 OK: JSON объект, содержащий информацию о всех рангах
+    """
+    ranks = await RankRepository.get_all_ranks(session)
+    return ranks
 
 @app.get('/api/pulls_info', response_model=list[PullOut])
 async def pull_info(session: AsyncSession = Depends(get_async_session)):
@@ -254,6 +291,28 @@ async def pull_info(session: AsyncSession = Depends(get_async_session)):
                           current_size=value[1],
                           percent=value[2]) for key, value in dict_data.items()]
     return list_pulls
+
+
+@app.get('/api/plan_info', response_model=list[PlanLiquidOut])
+async def plan_info(session: AsyncSession = Depends(get_async_session)):
+    """
+    • Описание: Метод для получения информации пуле ликвидности постов
+    • Параметры:\n
+        ◦ нет\n
+    • Ответ:\n
+        'Параметры пулла'
+            type_liquid - тип ликвидности(всего постов, бесплатных, платных)
+            data - информация о количестве и соотношении
+            need - сколько необходимо постов
+            current - сколько сейчас есть постов
+            percent - отношение текущего количество к нужному в %
+        ◦ 200 OK: JSON объект, содержащий информацию о пуле ликвидности
+    """
+
+    dict_data = await create_data_liquid(session)
+    plan_posts_liquid = [PlanLiquidOut(type_liquid=key,
+                                       data=LiquidOut(**value)) for key, value in dict_data.items()]
+    return plan_posts_liquid
 
 
 @app.post('/api/create_user', response_model=BaseUser)
@@ -334,7 +393,7 @@ async def delete_user(user: DeleteUser,
 
 
 def main():
-    config = uvicorn.Config(app, host='127.0.0.1', port=8000, log_level="info")
+    config = uvicorn.Config(app, host='127.0.0.1', port=8000, workers=8, log_level="info")
     server = uvicorn.Server(config)
     try:
         server.run()

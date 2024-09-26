@@ -102,7 +102,8 @@ async def channel_choice(method: str):
     else:
         keyboard = InlineKeyboardMarkup(
                 inline_keyboard=[[InlineKeyboardButton(text=value,
-                                                       callback_data=f'channel:{key}')] for key, value in channels.items()])
+                                                       callback_data=f'channel:{key}')] for key, value in
+                                 channels.items()])
     return keyboard
 
 

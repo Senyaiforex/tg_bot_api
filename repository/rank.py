@@ -13,9 +13,26 @@ class RankRepository:
         :return:
         """
         next_id = rank_id + 1
+        if rank_id == 100:
+            next_id = rank_id
         result = await session.execute(
                 select(Rank)
                 .where(Rank.id == next_id)
         )
         rank = result.scalars().first()
         return rank
+    @classmethod
+    async def get_all_ranks(cls, session: async_session) -> list[Rank]:
+        """
+        Метод для получения всех рангов из базы данных с их уровнями
+        :param session: Асинхронная сессия
+        :return: список рангов
+        :rtype: list[Rank]
+        """
+        list_levels_new_rank = [1, 11, 21, 31, 41, 51, 61, 71, 81, 91] # уровни, на которых достигается новый ранг
+        result = await session.execute(
+                select(Rank)
+                .where(Rank.id.in_(list_levels_new_rank))
+        )
+        ranks = result.scalars().all()
+        return ranks

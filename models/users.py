@@ -1,4 +1,5 @@
 from datetime import datetime
+from functools import wraps
 
 from sqlalchemy import Column, String, Integer, Table, ForeignKey, Date, DateTime, Boolean, select
 from sqlalchemy.orm import relationship
@@ -21,6 +22,31 @@ users_tasks = Table(
                primary_key=True),
 )
 
+
+def rank_updater(func):
+    """
+    Декоратор для обновления ранга при каких-либо изменениях в модели User
+    :param func:
+    :return:
+    """
+    @wraps(func)
+    async def wrapper(self, session: async_session, *args, **kwargs):
+        await func(self, session, *args, **kwargs)
+
+        if self.rank_id != 100:
+            from .rank import Rank
+            result = await session.execute(select(Rank)
+                                           .where(Rank.id == self.rank_id + 1))
+            rank_next = result.scalars().first()
+            if all((self.count_invited_friends >= rank_next.required_friends,
+                    self.total_coins >= rank_next.required_coins,
+                    self.count_tasks >= rank_next.required_tasks)):
+                self.spinners += 3
+                self.rank_id = rank_next.id
+
+        await session.commit()
+
+    return wrapper
 
 class User(Base):
     """
@@ -60,59 +86,26 @@ class User(Base):
     search_posts = relationship('SearchPost',
                                 backref='user'
                                 )
-
+    @rank_updater
     async def update_count_coins(self, session: async_session, amount: int,
                                  description: str, new=False):
         if new:
             self.count_coins = 0
+            self.total_coins = 0
         self.count_coins += amount
         self.total_coins += amount
-        if self.rank_id != 100:
-            from .rank import Rank
-            result = await session.execute(select(Rank)
-                                              .where(Rank.id == self.rank_id + 1))
-            rank_next = result.scalars().first()
-            if all((self.count_invited_friends >= rank_next.required_friends,
-                    self.total_coins >= rank_next.required_coins,
-                    self.count_tasks >= rank_next.required_tasks)):
-                self.spinners += 3
-                self.rank_id = rank_next.id
-        await session.commit()
         transaction = HistoryTransaction(
                 user_id=self.id,
                 change_amount=amount,
                 description=description
         )
         session.add(transaction)
-        await session.commit()
-
+    @rank_updater
     async def set_friends(self, session: async_session, amount: int):
         self.count_invited_friends += amount
-        if self.rank_id != 100:
-            from .rank import Rank
-            result = await session.execute(select(Rank)
-                                              .where(Rank.id == self.rank_id + 1))
-            rank_next = result.scalars().first()
-            if all((self.count_invited_friends >= rank_next.required_friends,
-                    self.total_coins >= rank_next.required_coins,
-                    self.count_tasks >= rank_next.required_tasks)):
-                self.spinners += 3
-                self.rank_id = rank_next.id
-        await session.commit()
-
+    @rank_updater
     async def set_tasks(self, session: async_session, amount: int):
         self.count_tasks += amount
-        if self.rank_id != 100:
-            from .rank import Rank
-            result = await session.execute(select(Rank)
-                                              .where(Rank.id == self.rank_id + 1))
-            rank_next = result.scalars().first()
-            if all((self.count_invited_friends >= rank_next.required_friends,
-                    self.total_coins >= rank_next.required_coins,
-                    self.count_tasks >= rank_next.required_tasks)):
-                self.spinners += 3
-                self.rank_id = rank_next.id
-        await session.commit()
 
 
 class HistoryTransaction(Base):

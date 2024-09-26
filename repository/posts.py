@@ -1,9 +1,8 @@
 from sqlalchemy import select, func
 from database import async_session
 from sqlalchemy import select, delete, update, or_, and_
-from models import Post
+from models import Post, LiquidPosts
 from datetime import date, timedelta
-
 
 
 class PostRepository:
@@ -198,6 +197,7 @@ class PostRepository:
         counts_posts = [count_free.scalar(), count_token.scalar(),
                         count_coins.scalar(), count_money.scalar()]
         return counts_posts
+
     @classmethod
     async def get_posts_by_celery(cls, session: async_session) -> int:
         """
@@ -212,6 +212,7 @@ class PostRepository:
         )
         posts_all = query_posts.scalars().all()
         return posts_all
+
     @classmethod
     async def post_update_by_celery(cls, session: async_session, post_id: int, **kwargs) -> None:
         """
@@ -224,6 +225,36 @@ class PostRepository:
         stmt = (
                 update(Post).
                 where(Post.id == post_id).
+                values(kwargs)
+        )
+        await session.execute(stmt)
+        await session.commit()
+
+    @classmethod
+    async def get_liquid_posts(cls, session: async_session) -> LiquidPosts:
+        """
+        Метод для получения информации об установленной ликвидности
+        :param session: Асинхронная сессия
+        :return: Инстанс ликвидности
+        :rtype: LiquidPosts
+        """
+        result = await session.execute(
+                select(LiquidPosts)
+        )
+        liquid_posts = result.scalar_one_or_none()
+        return liquid_posts
+
+    @classmethod
+    async def update_liquid_posts(cls, session: async_session, **kwargs) -> None:
+        """
+        Обновить параметры пула ликвидности дял публикаций постов
+        :param session: Асинхронная сессия
+        :param kwargs: Параметры ликвидности
+        :return:
+        """
+        stmt = (
+                update(LiquidPosts).
+                where(LiquidPosts.id == 1).
                 values(kwargs)
         )
         await session.execute(stmt)

@@ -52,6 +52,7 @@ async def is_user_subscribed(user_id: int, channel_id: str) -> bool:
         logger.error(f"Error checking subscription: {e}")
         return False
 
+
 def subscribed(func):
     @functools.wraps(func)
     async def wrapper(message: Message, *args, **kwargs):
@@ -109,6 +110,17 @@ async def start(message: Message, command: CommandObject) -> None:
             await handle_invitation(inviter_id, user_id, username, session)
         else:
             await UserRepository.create_user_tg(user_id, username, session)
+
+
+@dp.message(F.text == "Вернуться")
+async def back_to_main(message: Message, state: FSMContext) -> None:
+    await state.set_state(state=None)  # Завершаем текущее состояние
+    picture = FSInputFile('static/start_pic.jpg')
+    user_id = message.from_user.id
+    text = "Добро пожаловать!\n"
+    keyboard_reply = await start_reply_keyboard()
+    await bot.send_photo(user_id, caption=text, photo=picture, parse_mode='Markdown',
+                         reply_markup=keyboard_reply)
 
 
 @dp.message(F.text == 'Меню')
@@ -188,7 +200,7 @@ async def search_query(callback_query: CallbackQuery, state: FSMContext) -> None
     Функция обработки нажатия на inline-кнопку «➕Добавить товар в лист ожидания»
     """
     await message_answer_process(bot, callback_query,
-                                 state, txt_us.search)
+                                 state, txt_us.search, back_keyboard)
     await state.set_state(PostStates.wait_product_search)
 
 
@@ -242,7 +254,7 @@ async def add_post(callback_query: CallbackQuery, state: FSMContext) -> None:
     method = data.split('_')[2]
     await state.update_data(method=method)
     await message_answer_process(bot, callback_query,
-                                 state, txt_us.name_product)
+                                 state, txt_us.name_product, back_keyboard)
     await state.set_state(PostStates.wait_name)
 
 
@@ -256,7 +268,7 @@ async def post_list(callback_query: CallbackQuery, state: FSMContext) -> None:
         posts = await PostRepository.get_posts_by_user(session, callback_query.from_user.id)
         if len(posts) == 0:
             await message_answer_process(bot, callback_query,
-                                         state, 'У вас нет постов и публикаций')
+                                         state, 'У вас нет постов и публикаций', back_keyboard)
             return
         for post in posts:
             text = await create_text_by_post(post)
@@ -334,7 +346,7 @@ async def process_product_name(message: Message, state: FSMContext) -> None:
     async for session in get_async_session():
         search_cr = await SearchListRepository.create_search(session, user_id, message.text)
         await state.clear()
-        await message_answer_process(bot, message, state, dict_text[search_cr])
+        await message_answer_process(bot, message, state, dict_text[search_cr], back_keyboard)
 
 
 def contains_emoji(text: str) -> bool:
@@ -352,7 +364,7 @@ async def process_product_name(message: Message, state: FSMContext) -> None:
         await message_answer_process(bot, message, state, txt_us.name_invalid)
         return
     await state.update_data(product_name=message.text)
-    await message_answer_process(bot, message, state, txt_us.save_name)
+    await message_answer_process(bot, message, state, txt_us.save_name, back_keyboard)
     await state.set_state(PostStates.wait_photo)
 
 
@@ -388,7 +400,7 @@ async def process_product_photo(message: Message, state: FSMContext) -> None:
     dict_text = {True: txt_us.save_photo.format(product_name=product_name),
                  False: txt_us.photo_cancell}
     text = dict_text[save]
-    await message_answer_process(bot, message, state, text)
+    await message_answer_process(bot, message, state, text, back_keyboard)
     if save:
         await state.set_state(PostStates.wait_price)
 
@@ -398,7 +410,7 @@ async def process_invalid_photo(message: Message, state: FSMContext) -> None:
     """
     Функция обработки отправки фотографии товара
     """
-    await message_answer_process(bot, message, state, txt_us.photo_error)
+    await message_answer_process(bot, message, state, txt_us.photo_error, back_keyboard)
 
 
 @dp.message(PostStates.wait_price)
@@ -407,11 +419,11 @@ async def process_product_price(message: Message, state: FSMContext) -> None:
     Функция обработки отправки цены на товар на маркетплейсе
     """
     dict_text = {True: txt_us.discount_price,
-                 False: "Цена должна быть числом и не должна быть меньше нуля. Попробуйте ещё раз."}
+                 False: "Цена должна быть числом и не должна быть меньше или равна нулю. Попробуйте ещё раз."}
     product_price = message.text
     is_number = product_price.isdigit() and int(product_price) > 0
     text = dict_text[is_number]
-    await message_answer_process(bot, message, state, text)
+    await message_answer_process(bot, message, state, text, back_keyboard)
     if is_number:
         await state.set_state(PostStates.wait_discount)
         await state.update_data(product_price=int(product_price))
@@ -423,19 +435,20 @@ async def process_product_discount(message: Message, state: FSMContext) -> None:
     Функция обработки отправки цены на товар с учётом скидки на него
     """
     dict_text = {True: txt_us.marketplace,
-                 False: "Цена со скидкой(Кэшбеком) должна быть числом"
-                        "О не должна быть меньше нуля. Попробуйте ещё раз."}
+                 False: "Цена со скидкой(Кэшбеком) должна быть числом "
+                        "и не должна быть меньше нуля и быть меньше стоимости товара. Попробуйте ещё раз."}
     keyboard = await marketpalce_choice()
-    dict_keyboard = {True: keyboard, False: None}
+    dict_keyboard = {True: keyboard, False: back_keyboard}
     discount_price = message.text
-    is_number = discount_price.isdigit() and int(discount_price) >= 0
+    data = await state.get_data()
+    price = data.get('product_price')
+    is_number = all((discount_price.isdigit(), int(discount_price) >= 0,
+                     int(100 - (int(discount_price) / price * 100)) > 15))  # Все условия соблюдены
     text = dict_text[is_number]
     await message_answer_process(bot, message, state, text, dict_keyboard[is_number])
     if is_number:
-        data = await state.get_data()
-        price = data.get('product_price')
-        discount = int(100 - (int(message.text) / price * 100))
-        await state.update_data(price_discount=int(discount_price), discount_proc=discount)
+        await state.update_data(price_discount=int(discount_price),
+                                discount_proc=int(100 - (int(message.text) / price * 100)))
         await state.set_state(PostStates.wait_marketplace)
 
 
@@ -448,7 +461,7 @@ async def marketplace(message: Message, state: FSMContext) -> None:
     mp = message.text
     if mp == 'Пропустить':
         mp = 'Нет'
-    await message_answer_process(bot, message, state, txt_us.url_acc)
+    await message_answer_process(bot, message, state, txt_us.url_acc, back_keyboard)
     await state.update_data(product_marketplace=mp)
     await state.set_state(PostStates.wait_url_account)
 
@@ -535,7 +548,8 @@ async def public_and_create_post(session, callback_query, data, state, method):
                                                           text, 29)
         else:
             url_main_theme = url
-        await message_answer_process(bot, callback_query, state, txt_us.post_success.format(url=url))
+        await message_answer_process(bot, callback_query, state, txt_us.post_success.format(url=url),
+                                     back_keyboard)
         await create_post_user(session, bot, **dict_post_params,
                                active=True, url_message=url,
                                url_message_main=url_main_theme)
@@ -657,7 +671,7 @@ async def check_task_complete(telegram_id: int, task_id: int) -> bool:
                 return True
             else:
                 return False
-        else: # Пока что возвращаем True для всех остальных задач
+        else:  # Пока что возвращаем True для всех остальных задач
             await TaskRepository.add_task(user, task, session)
             await PullRepository.update_pull(session, 5000, 'current_task')
             await user.update_count_coins(session, 5000, 'Выполнение задания')
