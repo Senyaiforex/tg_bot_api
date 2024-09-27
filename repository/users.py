@@ -237,6 +237,8 @@ class UserRepository:
         if add:
             user.spinners += amount
         else:
+            if user.spinners < amount:
+                raise HTTPException(status_code=400, detail="Not enough spinners")
             user.spinners -= amount
         await session.commit()
         return user

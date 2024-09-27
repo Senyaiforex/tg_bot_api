@@ -1,3 +1,4 @@
+import re
 import asyncio
 import os
 import emoji
@@ -47,8 +48,7 @@ async def is_user_subscribed(user_id: int, channel_id: str) -> bool:
     try:
         member = await bot.get_chat_member(chat_id=channel_id, user_id=user_id)
         return member.status in ["member", "administrator", "creator"]
-    except Exception as e:
-        logger.error(f"Error checking subscription: {e}")
+    except TelegramBadRequest as e:
         return False
 
 
@@ -303,7 +303,10 @@ async def del_post(callback_query: CallbackQuery, state: FSMContext) -> None:
                 if id_main_message != id_message:
                     await delete_message(bot, chat_id, id_main_message)
         await message_answer_process(bot, callback_query, state, "Пост удалён!", await reply_keyboard())
-        await callback_query.message.delete()
+        try:
+            await callback_query.message.delete()
+        except TelegramBadRequest as ex:
+            pass
 
 
 @dp.callback_query(lambda c: c.data.startswith('my-post_deactivate'))
@@ -374,12 +377,20 @@ async def process_product_name(message: Message, state: FSMContext) -> None:
     Функция обработки отправки названия товара для публикации поста
     """
     name = message.text
-    if len(name) > 75 or contains_emoji(name):
-        await message_answer_process(bot, message, state, txt_us.name_invalid)
-        return
-    await state.update_data(product_name=message.text)
-    await message_answer_process(bot, message, state, txt_us.save_name, back_keyboard)
-    await state.set_state(PostStates.wait_photo)
+    is_valid = True
+    dict_valid = {True: txt_us.save_name,
+                  False: txt_us.name_invalid}
+    try:
+        pattern = r'^[a-zA-Z0-9-]{5,75}$'
+        if contains_emoji(name) or not await validate_string(pattern, name):
+            is_valid = False
+    except (ValueError, AttributeError, TypeError) as ex:
+        is_valid = False
+    else:
+        await state.update_data(product_name=name)
+        await state.set_state(PostStates.wait_photo)
+    finally:
+        await message_answer_process(bot, message, state, dict_valid[is_valid], back_keyboard)
 
 
 async def save_file(bot: Bot, photo, state: FSMContext):
@@ -438,7 +449,7 @@ async def process_product_price(message: Message, state: FSMContext) -> None:
     try:
         product_price = int(message.text.replace(' ', ''))
         is_number = 0 < product_price < 300_000
-    except ValueError as ex:
+    except (ValueError, AttributeError, TypeError) as ex:
         is_number = False
     text = dict_text[is_number]
     await message_answer_process(bot, message, state, text, back_keyboard)
@@ -463,7 +474,7 @@ async def process_product_discount(message: Message, state: FSMContext) -> None:
     try:
         discount_price = int(message.text.replace(' ', ''))
         is_number = 0 <= discount_price < 300_000 and int(100 - discount_price / price * 100) >= 15
-    except ValueError as ex:
+    except (ValueError, AttributeError, TypeError) as ex:
         is_number = False
     text = dict_text[is_number]
     await message_answer_process(bot, message, state, text, dict_keyboard[is_number])
@@ -488,6 +499,10 @@ async def marketplace(message: Message, state: FSMContext) -> None:
     await state.set_state(PostStates.wait_url_account)
 
 
+async def validate_string(pattern, s):
+    return bool(re.match(pattern, s))
+
+
 @dp.message(PostStates.wait_url_account)
 async def account_url(message: Message, state: FSMContext) -> None:
     """
@@ -497,15 +512,26 @@ async def account_url(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     url_acc = message.text
     keyboard = await channel_choice(method=data.get('method'))
-    if any(['@' in url_acc, 'http' in url_acc, '-' in url_acc, '/' in url_acc]):
-        await message_answer_process(bot, message, state,
-                                     "Неверный ввод!\nВведите имя пользователя "
-                                     "телеграм без ссылок и значка '@'"
-                                     "Отправьте исправленные данные ещё раз "
-                                     "либо нажмите /start", keyboard)
-    await state.update_data(account_url=message.text)
-    await message_answer_process(bot, message, state, txt_us.channel, keyboard)
-    await state.set_state(PostStates.wait_channel)
+    is_valid = True
+    dict_valid = {
+            True: (txt_us.channel, keyboard),
+            False: ("Неверный ввод!\nВведите имя пользователя "
+                    "телеграм без ссылок и значка '@'\n"
+                    "Длина никнейма должна быть от 5 до 32 символов"
+                    "Отправьте исправленные данные ещё раз "
+                    "либо нажмите /start", back_keyboard)}
+
+    try:
+        pattern = r'^[a-zA-Z0-9_]{5,32}$'
+        if not await validate_string(pattern, url_acc):
+            is_valid = False
+    except (ValueError, AttributeError, TypeError) as ex:
+        is_valid = False
+    else:
+        await state.update_data(account_url=message.text)
+        await state.set_state(PostStates.wait_channel)
+    finally:
+        await message_answer_process(bot, message, state, dict_valid[is_valid][0], dict_valid[is_valid][1])
 
 
 @dp.callback_query(lambda c: c.data.startswith('channel'), PostStates.wait_channel)

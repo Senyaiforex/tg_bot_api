@@ -29,24 +29,28 @@ def rank_updater(func):
     :param func:
     :return:
     """
+
     @wraps(func)
     async def wrapper(self, session: async_session, *args, **kwargs):
         await func(self, session, *args, **kwargs)
-
-        if self.rank_id != 100:
-            from .rank import Rank
-            result = await session.execute(select(Rank)
-                                           .where(Rank.id == self.rank_id + 1))
-            rank_next = result.scalars().first()
-            if all((self.count_invited_friends >= rank_next.required_friends,
-                    self.total_coins >= rank_next.required_coins,
-                    self.count_tasks >= rank_next.required_tasks)):
-                self.spinners += 3
-                self.rank_id = rank_next.id
-
+        try:
+            if self.rank_id != 100:
+                from .rank import Rank
+                result = await session.execute(select(Rank)
+                                               .where(Rank.id == self.rank_id + 1))
+                rank_next = result.scalars().first()
+                if (self.count_invited_friends and
+                        all((self.count_invited_friends >= rank_next.required_friends,
+                             self.total_coins >= rank_next.required_coins,
+                             self.count_tasks >= rank_next.required_tasks))):
+                    self.spinners += 3
+                    self.rank_id = rank_next.id
+        except TypeError as ex:
+            pass
         await session.commit()
 
     return wrapper
+
 
 class User(Base):
     """
@@ -86,6 +90,7 @@ class User(Base):
     search_posts = relationship('SearchPost',
                                 backref='user'
                                 )
+
     @rank_updater
     async def update_count_coins(self, session: async_session, amount: int,
                                  description: str, new=False):
@@ -100,11 +105,17 @@ class User(Base):
                 description=description
         )
         session.add(transaction)
+
     @rank_updater
     async def set_friends(self, session: async_session, amount: int):
+        if not self.count_invited_friends:
+            self.count_invited_friends = 0
         self.count_invited_friends += amount
+
     @rank_updater
     async def set_tasks(self, session: async_session, amount: int):
+        if not self.count_tasks:
+            self.count_tasks = 0
         self.count_tasks += amount
 
 

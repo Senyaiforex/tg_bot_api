@@ -152,7 +152,7 @@ async def valid_date(date: str):
     try:
         datetime.strptime(date, '%d.%m.%Y')
         return True
-    except ValueError:
+    except (ValueError, TypeError, AttributeError):
         return False
 
 

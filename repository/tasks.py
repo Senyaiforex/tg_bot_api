@@ -174,7 +174,7 @@ class TaskRepository:
         await session.commit()
 
     @classmethod
-    async def get_tasks_by_celery(cls, session: async_session) -> int:
+    async def get_tasks_by_celery(cls, session: async_session, today: date) -> int:
         """
         Функция для получения всех заданий в базе данных
         Дата действия которых уже закончилась
@@ -182,10 +182,9 @@ class TaskRepository:
         :return: Все задания
         :rtype: int
         """
-        today = datetime.today().date()
         query_tasks = await session.execute(
                 select(Task)
-                .where(Task.date_limit < today)
+                .where(Task.date_limit > today)
         )
         tasks_all = query_tasks.result.scalars().all()
         return tasks_all

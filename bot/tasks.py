@@ -61,30 +61,32 @@ def check_tasks():
 async def work_tasks():
     async for session in get_async_session():
         today = datetime.today().date()
-        tasks = await TaskRepository.get_tasks_by_celery(session)
-        admins = UserRepository.get_admins(session)
+        tasks = await TaskRepository.get_tasks_by_celery(session, today)
+        admins = await UserRepository.get_admins(session)
         for task in tasks:
-            if task.date_limit > today:
-                await send_messages_for_admin(admin_bot, admins, txt_adm.task_expired.format(name=task.description,
-                                                                                             url=task.url))
-                await TaskRepository.task_delete_by_celery(session, task.id)
+            await send_messages_for_admin(admin_bot, admins, txt_adm.task_expired.format(name=task.description,
+                                                                                         url=task.url))
+            await TaskRepository.task_delete_by_celery(session, task.id)
 
 
 async def work_posts():
     async for session in get_async_session():
         today = datetime.today().date()
-        posts = await PostRepository.get_posts_by_celery(session)
+        posts = await PostRepository.get_posts_by_celery(session, today)
         for post in posts:
-            if post.date_expired < today:
-                await send_message(bot, chat_id=post.user_telegram,
-                                   text=txt_us.post_expired.format(url=post.url_message))
+            await send_message(bot, chat_id=post.user_telegram,
+                               text=txt_us.post_expired.format(url=post.url_message))
+            try:
                 chat_id = post.channel_id.split('_')[0]
                 id_message = post.url_message.split('/')[4]
                 id_main_message = post.url_message_main.split('/')[4]
+            except AttributeError as ex:
+                pass
+            else:
                 await delete_message(bot, chat_id, id_message)
                 if id_main_message != id_message:
                     await delete_message(bot, chat_id, id_main_message)
-                await PostRepository.post_update_by_celery(session, post.id, active=False)
+            await PostRepository.post_update_by_celery(session, post.id, active=False)
 
 
 @app.on_after_configure.connect

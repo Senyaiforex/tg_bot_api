@@ -35,8 +35,6 @@ async def delete_message(bot: Bot, user_id: int, previous_id: int):
         logger.info(f"{user_id}, {previous_id}")
         await bot.delete_message(chat_id=user_id, message_id=previous_id)
     except TelegramBadRequest as ex:
-        logger.info(f"ИСКЛЮЧЕНИЕИСКЛЮЧЕНИЕ -  - - - -")
-        logger.info(ex)
         pass  # логирование в файл
 
 
@@ -101,11 +99,14 @@ async def message_answer_process(bot: Bot,
     data = await state.get_data()
     previous_message_id = data.get('last_bot_message')
     if isinstance(object_interaction, Message):
-        user_id = object_interaction.chat.id
-        await object_interaction.delete()
-        msg = await object_interaction.answer(text=text,
-                                              reply_markup=keyboard,
-                                              parse_mode='Markdown')
+        try:
+            user_id = object_interaction.chat.id
+            await object_interaction.delete()
+            msg = await object_interaction.answer(text=text,
+                                                  reply_markup=keyboard,
+                                                  parse_mode='Markdown')
+        except TelegramBadRequest as e:
+            pass
     else:
         user_id = object_interaction.from_user.id
         msg = await object_interaction.message.answer(text=text,

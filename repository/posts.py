@@ -208,7 +208,7 @@ class PostRepository:
         return counts_posts
 
     @classmethod
-    async def get_posts_by_celery(cls, session: async_session) -> int:
+    async def get_posts_by_celery(cls, session: async_session, today: date) -> int:
         """
         Метод для получения всех опубликованных постов в базе данных
         :param session: Асинхронная сессия
@@ -217,7 +217,11 @@ class PostRepository:
         """
         query_posts = await session.execute(
                 select(Post)
-                .where(Post.active == True)
+                .where(and_(
+                        Post.active == True,
+                        Post.date_expired < today
+                )
+                )
         )
         posts_all = query_posts.scalars().all()
         return posts_all
