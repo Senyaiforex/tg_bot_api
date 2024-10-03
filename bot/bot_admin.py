@@ -46,7 +46,6 @@ dict_keyboards = {
         # '🗑Удалить пост': '',
 }
 
-
 bot = Bot(BOT_TOKEN)
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
@@ -121,7 +120,7 @@ async def back_to_main(message: Message, state: FSMContext) -> None:
 
 @dp.message(F.text == '👥Добавить администратора')
 @permissions_check
-async def inline_buttons_menu(message: Message, session, state: FSMContext) -> None:
+async def add_admin(message: Message, session, state: FSMContext) -> None:
     """
     Функция, которая обрабатывает нажатие на кнопку 👥Добавить администратора
     """
@@ -130,6 +129,19 @@ async def inline_buttons_menu(message: Message, session, state: FSMContext) -> N
                                  txt_adm.add_telegram,
                                  back_keyboard, False)
     await state.set_state(States.wait_telegram_admin)
+
+
+@dp.message(F.text == '➖Удалить администратора')
+@permissions_check
+async def delete_admin(message: Message, session, state: FSMContext) -> None:
+    """
+    Функция, которая обрабатывает нажатие на кнопку ➖Удалить администратора
+    """
+    await state.set_state(None)
+    await message_answer_process(bot, message, state,
+                                 txt_adm.add_telegram,
+                                 back_keyboard, False)
+    await state.set_state(States.wait_username_admin_block)
 
 
 @dp.message(F.text == '💰Пул наград')
@@ -553,6 +565,23 @@ async def add_username_admin(message: Message, session, state: FSMContext) -> No
     await message_answer_process(bot, message, state,
                                  text, back_keyboard, False)
     await UserRepository.create_user_admin(telegram_admin, msg, session)
+    await state.set_state(None)
+
+
+@dp.message(States.wait_username_admin_block)
+@logger.catch
+@permissions_check
+async def wait_username_admin_delete(message: Message, session, state: FSMContext) -> None:
+    """
+    Функция обработки отправки username пользователя,
+    для удаления его из администраторов
+    """
+    msg = message.text
+    dict_info = {True: f"Пользователь удалён из администраторов!",
+                 False: "Такой пользователь отсутствует в базе данных"}
+    success = await UserRepository.delete_user_admin(msg, session)
+    await message_answer_process(bot, message, state,
+                                 dict_info[success], back_keyboard, False)
     await state.set_state(None)
 
 

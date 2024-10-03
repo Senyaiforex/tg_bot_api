@@ -18,6 +18,7 @@ class DeletePost(StatesGroup):
 
 class States(StatesGroup):
     wait_telegram_admin = State()
+    wait_username_admin_block = State()
     wait_username = State()
     wait_telegram_block = State()
     wait_username_unlock = State()

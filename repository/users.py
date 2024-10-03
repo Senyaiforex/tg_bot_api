@@ -125,6 +125,23 @@ class UserRepository:
         else:
             session.add(new_user)
         await session.commit()
+    @classmethod
+    async def delete_user_admin(cls, username: str, session: async_session) -> bool:
+        """
+        Функция для удаления пользователя из администратора в базе данных
+        :param username: Никнейм пользователя
+        :param session: Асинхронная сессия
+        """
+        result = await session.execute(select(User). \
+                                       where(User.user_name == username))
+        user = result.scalars().first()
+        if user:
+            user.admin = False
+            user.superuser = False
+            await session.commit()
+            return True
+        else:
+            return False
 
     @classmethod
     async def base_create_user(cls, user, session: async_session) -> User:
