@@ -9,6 +9,7 @@ COPY ./app/requirements.txt /app/requirements.txt
 RUN pip install --upgrade pip
 RUN pip install -r /app/requirements.txt
 COPY ./app /app
+RUN chmod +x /app/apply_migrations.sh
 
 # Создаем символические ссылки на общие модули
 RUN ln -s /models /app/models \
@@ -16,4 +17,4 @@ RUN ln -s /models /app/models \
     && ln -s /utils /app/utils \
     && ln -s /database.py /app/database.py
 # Указываем команду запуска FastAPI
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+#CMD ["python", "main.py"]

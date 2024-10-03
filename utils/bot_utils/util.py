@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta
 from difflib import SequenceMatcher
-
 from aiogram import Bot
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from sqlalchemy import update
 
 from .messages import send_message
 from sqlalchemy.future import select
@@ -13,6 +13,8 @@ from fastapi import HTTPException
 from .text_static import *
 
 GROUP_ID = -1002409284453
+
+CHANNEL_ID = os.getenv("CHANNEL_ID")
 
 
 async def url_post_keyboard(url):
@@ -53,6 +55,7 @@ async def handle_invitation(inviter_id: int, user_id: int, username: str, sessio
     await new_user.update_count_coins(session, 5000, f"Бонус за регистрацию", new=True)
     await PullRepository.update_pull(session, 10000, "current_friends")
     session.add(new_user)
+    await session.commit()
     await session.execute(friends.insert().values(
             friend1_id_telegram=inviter_id,
             friend2_id_telegram=user_id
@@ -91,9 +94,7 @@ async def get_info_from_user(username: str, session: AsyncSession) -> dict[str: 
         user = await UserRepository.get_user_by_username(username, session)
     except HTTPException as ex:
         return dict_info
-    username = user.user_name
-    if '_' in username:
-        username.replace('_', '\_')
+    username = user.user_name.replace("_", "\_")
     dict_info = {
             'Телеграм id пользователя': user.id_telegram,
             'Никнейм': f"@{username}",
@@ -134,15 +135,15 @@ async def create_text_transactions(telegram_id: int, session) -> str:
     return text if text else "Транзакции у данного пользователя отсутствуют"
 
 
-async def block_user_by_username(username: str, session: AsyncSession) -> bool:
+async def change_active_user(username: str, active: bool, session: AsyncSession) -> bool:
     """
-    Функция для блокировки пользователя по его Username
+    Функция для блокировки/разблокировки пользователя по его Username
     :param username:
     :param session:
     :return:
     """
     try:
-        await UserRepository.block_user(username, session)
+        await UserRepository.update_active_user(username, active, session)
         return True
     except HTTPException as ex:
         return False
@@ -181,6 +182,13 @@ async def create_post_user(session, bot, **kwargs) -> bool:
     if active:
         search_posts = await UserRepository.get_users_with_search(session)
         await notification(search_posts, name, url, bot)
+        if kwargs.get('method') == 'free':
+            await session.execute(
+                    update(User)
+                    .where(User.id_telegram == int(kwargs.get('user_telegram')))
+                    .values(count_free_posts=User.count_free_posts + 1)
+            )
+            await session.commit()
     return post.id
 
 
@@ -188,7 +196,7 @@ async def update_active_post(session, bot, url, post_id):
     post = await PostRepository.get_post(session, post_id)
     await PostRepository.update_post(session,
                                      post_id, url_message=url,
-                                     active=True,date_public=datetime.today().date())
+                                     active=True, date_public=datetime.today().date())
     search_posts = await UserRepository.get_users_with_search(session)
     await notification(search_posts, post.name, url, bot)
 
@@ -230,6 +238,7 @@ async def create_dict_params(data: dict, user_id):
 
 
 async def create_text_for_post(data):
+    url = data.get('account_url').replace('_', '\_')
     text = txt_us.post.format(
             name=data.get('product_name'),
             value=data.get('product_price') - data.get('price_discount'),
@@ -237,19 +246,20 @@ async def create_text_for_post(data):
             price=data.get('product_price'),
             price_discount=data.get('price_discount'),
             marketplace=data.get('product_marketplace', 'Нет'),
-            url=data.get('account_url')
+            url=url
     )
     return text
 
 
 async def create_text_by_post(post: Post):
+    url = post.account_url.replace('_', '\_')
     text = txt_us.info_post.format(
             name=post.name,
             value=int(post.price) - int(post.discounted_price),
             discount=post.discount,
             price=post.price,
             price_discount=post.discounted_price,
-            url=post.account_url
+            url=url
     )
     if post.marketplace:
         text += f'\nМаркетплейс: {post.marketplace}'
@@ -279,11 +289,11 @@ async def create_statistic_message(session: AsyncSession, bot: Bot) -> str:
 
 async def create_text_pull(pull: Pull):
     text_pull = txt_adm.text_pull.format(
-            coins=pull.coins,
-            farming=pull.farming,
-            friends=pull.friends,
-            task=pull.task,
-            plan=pull.plan
+            coins=pull.coins, current_coins=pull.current_coins,
+            farming=pull.farming, current_farming=pull.current_farming,
+            friends=pull.friends, current_friends=pull.current_friends,
+            task=pull.tasks, current_task=pull.current_tasks,
+            plan=pull.plan, current_plan=pull.current_plan
     )
     return text_pull
 
@@ -300,10 +310,8 @@ async def create_text_friends(friends: list) -> str:
     else:
         for friend in friends:
             username = friend["username"]
-            if '_' in username:
-                username.replace('_', '\_')
             text += txt_adm.user_friends_info.format(
-                    username=username,
+                    username=username.replace("_", "\_"),
                     level=friend["level"],
                     rank=friend["rank"],
                     date=friend["date_registration"]

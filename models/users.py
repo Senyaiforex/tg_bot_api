@@ -1,7 +1,7 @@
 from datetime import datetime
 from functools import wraps
 
-from sqlalchemy import Column, String, Integer, Table, ForeignKey, Date, DateTime, Boolean, select
+from sqlalchemy import Column, String, Integer, Table, ForeignKey, Date, DateTime, Boolean, select, BigInteger
 from sqlalchemy.orm import relationship
 from database import Base, async_session
 from .posts import Post
@@ -57,11 +57,11 @@ class User(Base):
     Модель пользователя телеграм
     """
     __tablename__ = 'users'
-    id = Column(Integer, primary_key=True, index=True)
-    id_telegram = Column(Integer, index=True, unique=True)
+    id = Column(BigInteger, primary_key=True, index=True)
+    id_telegram = Column(BigInteger, index=True, unique=True)
     user_name = Column(String, index=True)
     count_coins = Column(Integer, default=0)
-    count_pharmd = Column(Integer, default=65_000)
+    count_pharmd = Column(Integer, default=2_000)
     total_coins = Column(Integer, default=0)
     count_invited_friends = Column(Integer, default=0)
     purchase_count = Column(Integer, default=0)
@@ -77,6 +77,8 @@ class User(Base):
     tasks = relationship("Task", secondary=users_tasks,
                          back_populates='users')
     count_tasks = Column(Integer, default=0, comment='Количество выполненных задач')
+    count_free_posts = Column(Integer, default=0, nullable=False,
+                              comment='Количество бесплатных размещённых постов')
     rank_id = Column(Integer, ForeignKey('ranks.id'), default=1)
     friends = relationship(
             'User',

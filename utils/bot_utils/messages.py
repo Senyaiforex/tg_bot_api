@@ -1,4 +1,4 @@
-from aiogram.exceptions import TelegramBadRequest
+from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from aiogram.fsm.context import FSMContext
 from aiogram import Bot
 from aiogram.types import Message, FSInputFile, InlineKeyboardMarkup, CallbackQuery, KeyboardButton, ReplyKeyboardMarkup
@@ -13,13 +13,9 @@ logger = logging.getLogger(__name__)
 # from aiogram.utils.text_decorations import
 
 async def reply_keyboard():
-    catalog = [KeyboardButton(text="Каталог")]
     menu = [KeyboardButton(text="Меню")]
-    public_post = [KeyboardButton(text="Опубликовать пост")]
     keyboard = ReplyKeyboardMarkup(keyboard=[
-            catalog,
             menu,
-            public_post,
     ], resize_keyboard=True, is_persistent=True, one_time_keyboard=False)
     return keyboard
 
@@ -32,9 +28,8 @@ async def delete_message(bot: Bot, user_id: int, previous_id: int):
     :return:
     """
     try:
-        logger.info(f"{user_id}, {previous_id}")
         await bot.delete_message(chat_id=user_id, message_id=previous_id)
-    except TelegramBadRequest as ex:
+    except (TelegramBadRequest, TelegramForbiddenError) as ex:
         pass  # логирование в файл
 
 
@@ -50,7 +45,7 @@ async def delete_list_messages(data, bot, user_id):
 
 
 async def process_menu_message(picture: FSInputFile,
-                               keyboard: InlineKeyboardMarkup,
+                               keyboard: InlineKeyboardMarkup | None,
                                bot: Bot,
                                object_interaction: Message | CallbackQuery,
                                state: FSMContext,
@@ -121,13 +116,14 @@ async def message_answer_process(bot: Bot,
 async def send_messages_for_admin(session, bot, url_post, username):
     admins = await UserRepository.get_admins(session)
     text = f'От автора - @{username}' if username else ''
+    text = text.replace("_", "\_")
     for admin in admins:
         try:
             await bot.send_message(admin.id_telegram,
                                    text=f'Здравствуйте, администратор!\n'
                                         f'В группе публиковано новое объявление - [перейти]({url_post})\n' + text,
                                    parse_mode='Markdown')
-        except TelegramBadRequest as e:
+        except (TelegramBadRequest, TelegramForbiddenError) as e:
             pass
 
 
@@ -138,5 +134,5 @@ async def send_message(bot, chat_id, text, keyboard):
                                parse_mode='Markdown',
                                reply_markup=keyboard
                                )
-    except TelegramBadRequest as e:
+    except (TelegramBadRequest, TelegramForbiddenError) as e:
         pass

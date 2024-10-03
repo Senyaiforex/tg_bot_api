@@ -12,12 +12,9 @@ class RankRepository:
         :param session:
         :return:
         """
-        next_id = rank_id + 1
-        if rank_id == 100:
-            next_id = rank_id
         result = await session.execute(
                 select(Rank)
-                .where(Rank.id == next_id)
+                .where(Rank.id == rank_id + 1)
         )
         rank = result.scalars().first()
         return rank

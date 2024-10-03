@@ -172,6 +172,22 @@ class UserRepository:
         return user.count_coins
 
     @classmethod
+    async def get_count_pharmd(cls, session: async_session, id_telegram: int) -> int:
+        """
+        Метод для получения количество фарма у пользователя по его айди телеграмм
+        :param session: Асинхронная сессия
+        :param id_telegram: Айди телеграм пользователя
+        :return: Количество фарма
+        :rtype: int
+        """
+        result_user = await session.execute(
+                select(User)
+                .where(User.id_telegram == id_telegram)
+        )
+        user = result_user.scalars().first()
+        return user.count_pharmd
+
+    @classmethod
     async def change_coins_by_id(cls, id_telegram: int,
                                  amount: int, add: bool, description: str, session: async_session) -> User:
         """
@@ -188,7 +204,7 @@ class UserRepository:
         if user is None:
             raise HTTPException(status_code=404, detail="User not found")
         if add:
-            description = description
+            description = 'Начисление за фарминг монет' if description == 'farming' else description
             await user.update_count_coins(session, amount, description)
         else:
             if user.count_coins < amount:
@@ -284,8 +300,8 @@ class UserRepository:
         )
         user = result.scalars().first()
 
-        if user is None:
-            return None
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
 
         friends_list = []
         for friend in user.friends:
@@ -407,9 +423,9 @@ class UserRepository:
         return (count_today.scalar(), count_week.scalar(), count_month.scalar())
 
     @classmethod
-    async def block_user(cls, username: str, session: async_session) -> None:
+    async def update_active_user(cls, username: str, active: bool, session: async_session) -> None:
         """
-        Заблокировать пользователя в базе данных с переданным никнеймом
+        Заблокировать/разблокировать пользователя в базе данных с переданным никнеймом
         Если такого пользователя в базе данных не существует, вернёт 404
         :param username: Никнейм пользователя
         :param session: Асинхронная сессия
@@ -421,7 +437,7 @@ class UserRepository:
         user = user.scalars().first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        user.active = False
+        user.active = active
         await session.commit()
 
     @classmethod
@@ -440,7 +456,7 @@ class UserRepository:
                         User.id_telegram.label('user_telegram'),  # Выбираем поле user_telegram
                         func.count(post_alias.id).label("post_count")  # Считаем количество постов
                 )
-                .join(post_alias, User.id_telegram == post_alias.user_telegram, isouter=True)  # Левое соединение с Post
+                .join(post_alias, User.id_telegram == post_alias.user_telegram, isouter=True)
                 .group_by(User.id_telegram)  # Группируем по полю user_telegram
                 .subquery()
         )
@@ -486,11 +502,9 @@ class SearchListRepository:
         return search_posts
 
     @classmethod
-    async def create_search(cls, session: async_session, id_telegram: int, name: str) -> bool:
+    async def create_search(cls, session: async_session, id_telegram: int, name: str) -> None:
         """
         Создание товара в листе ожидания пользователя
-        Если у пользователя уже есть 10(maximum) товаров в листе ожидания, то вернёт False,
-        тогда пользователю необходимо удалить товары из листа ожидания
         :param session: Асинхронная сессия
         :param id_telegram: Айди телеграм пользователя
         :param name: Наименования товара для добавления в лист ожидания
@@ -498,19 +512,12 @@ class SearchListRepository:
         """
         result_user = await session.execute(
                 select(User)
-                .options(selectinload(User.search_posts))
                 .where(User.id_telegram == id_telegram)
         )
         user = result_user.scalars().first()
-        new_search = SearchPost(name=name)
-        user_search = user.search_posts
-        if len(user_search) >= 10:
-            return False
-        else:
-            session.add(new_search)
-            user_search.append(new_search)
-            await session.commit()
-            return True
+        new_search = SearchPost(name=name, user_id=user.id)
+        session.add(new_search)
+        await session.commit()
 
     @classmethod
     async def get_search_by_user(cls, session: async_session, telegram_id: int) -> list[SearchPost]:

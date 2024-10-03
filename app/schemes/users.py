@@ -21,7 +21,7 @@ class BaseUser(BaseModel):
             description='Количество токенов у пользователя'
     )
     count_pharmd: int = Field(
-            default=65_000,
+            default=2_000,
             description='Количество фарма у пользователя'
     )
     count_invited_friends: int = Field(

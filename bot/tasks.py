@@ -1,8 +1,8 @@
 import asyncio
-import logging
+from loguru import logger
 from datetime import datetime
 
-from aiogram.exceptions import TelegramBadRequest
+from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from celery import Celery
 from celery.schedules import crontab
 from bot_main import bot
@@ -12,8 +12,15 @@ from bot_admin import bot as admin_bot
 from models import User
 from utils.bot_utils.text_static import txt_adm, txt_us
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger.add("logs/logs_celery/log_file.log",
+           retention="5 days",
+           rotation='21:00',
+           compression="zip",
+           level="DEBUG",
+           format="{time:YYYY-MM-DD HH:mm:ss} | "
+                  "{level: <8} | "
+                  "{name}:{function}:{line} - "
+                  "{message}")
 app = Celery(
         'tasks',
         broker='redis://redis:6379/0',
@@ -23,7 +30,6 @@ app.conf.timezone = 'Europe/Moscow'
 
 loop = asyncio.get_event_loop()
 
-
 async def get_async_session() -> async_session:
     async with async_session() as session:
         yield session
@@ -32,15 +38,15 @@ async def get_async_session() -> async_session:
 async def delete_message(bot_instance, chat_id, id_message) -> None:
     try:
         await bot_instance.delete_message(chat_id=chat_id, message_id=id_message)
-    except TelegramBadRequest as ex:
-        pass  # логирование в файл
+    except (TelegramBadRequest, TelegramForbiddenError) as ex:
+        pass
 
 
 async def send_message(bot_instance, chat_id, text) -> None:
     try:
         await bot_instance.send_message(chat_id=chat_id, text=text, parse_mode='Markdown')
-    except TelegramBadRequest as ex:
-        pass  # лог
+    except (TelegramBadRequest, TelegramForbiddenError) as ex:
+        pass
 
 
 async def send_messages_for_admin(bot_instance, admins: list[User], text: str) -> None:
@@ -57,7 +63,7 @@ def check_posts():
 def check_tasks():
     asyncio.run(work_tasks())
 
-
+@logger.catch
 async def work_tasks():
     async for session in get_async_session():
         today = datetime.today().date()
@@ -68,7 +74,7 @@ async def work_tasks():
                                                                                          url=task.url))
             await TaskRepository.task_delete_by_celery(session, task.id)
 
-
+@logger.catch
 async def work_posts():
     async for session in get_async_session():
         today = datetime.today().date()
@@ -86,13 +92,16 @@ async def work_posts():
                 await delete_message(bot, chat_id, id_message)
                 if id_main_message != id_message:
                     await delete_message(bot, chat_id, id_main_message)
+                if post.url_message_free and post.url_message_free != post.url_message:
+                    id_message_free = post.url_message_free.split('/')[4]
+                    await delete_message(bot, chat_id, id_message_free)
             await PostRepository.post_update_by_celery(session, post.id, active=False)
 
 
 @app.on_after_configure.connect
 def setup_periodic_tasks(sender, **kwargs):
     sender.add_periodic_task(
-            crontab(hour=16, minute=0),
+            crontab(hour=21, minute=53),
             check_posts.s(), name='check_post-every-16-00'
     )
     sender.add_periodic_task(

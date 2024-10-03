@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer
+from sqlalchemy import Column, Integer, BigInteger
 from database import Base
 
 
@@ -7,5 +7,5 @@ class Bank(Base):
     Модель общего количества монет, которые списываются с пользователей
     """
     __tablename__ = 'bank'
-    id = Column(Integer, primary_key=True, index=True)
-    coins = Column(Integer, index=True, default=0)
+    id = Column(Integer, primary_key=True)
+    coins = Column(BigInteger, index=True, default=0)

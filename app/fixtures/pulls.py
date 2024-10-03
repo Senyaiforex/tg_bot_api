@@ -13,7 +13,7 @@ async def create_pull(session: AsyncSession):
         return
 
     pull_start = Pull(farming=5_000_000,
-                      task=5_000_000,
+                      tasks=5_000_000,
                       friends=5_000_000,
                       coins=5_000_000,
                       plan=5_000_000)

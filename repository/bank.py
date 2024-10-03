@@ -35,3 +35,23 @@ class BankRepository:
 
         await session.execute(stmt)
         await session.commit()
+    @classmethod
+    async def delete_coins(cls, session: async_session, amount: int) -> bool:
+        """
+        Метод для удаления монет из общего банка монет приложения
+        :param session: Асинхронная сессия
+        :param amount: Количество
+        :return: None
+        """
+        bank_id = 1
+        result = await session.execute(
+                select(Bank).
+                where(Bank.id == bank_id)
+        )
+        bank = result.scalars().first()
+        if bank.coins < amount:
+            return False
+        else:
+            bank.coins -= amount
+            await session.commit()
+            return True

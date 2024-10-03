@@ -11,18 +11,25 @@ import asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot_main import check_task_complete, public_post_in_channel, bot
-import logging
+from loguru import logger
 from bot_admin import bot as bot_admin
 from database import async_session
 from repository import OrderRepository, PostRepository
 from utils.bot_utils.messages import send_messages_for_admin
 from utils.bot_utils.util import create_text_for_post
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger.add("logs/web_server/log_file.log",
+           retention="5 days",
+           rotation='22:00',
+           compression="zip",
+           level="DEBUG",
+           format="{time:YYYY-MM-DD HH:mm:ss} | "
+                  "{level: <8} | "
+                  "{name}:{function}:{line} - "
+                  "{message}")
 
 
-async def get_async_session() -> AsyncSession:
+async def get_async_session() -> async_session:
     async with async_session() as session:
         yield session
 
@@ -56,22 +63,24 @@ async def get_count_subscribed(request):
     try:
         count = await bot.get_chat_member_count(chat_id=-1002090610085) - 5
     except TelegramBadRequest as ex:
-        logger.error(ex)
+        logger.error(str(ex), exc_info=True)
         count = 1929
     return web.json_response({'count': count}, status=200)
 
 
+@logger.catch
 async def check_task(request):
     """
     Проверка, что задание выполнено пользователем
     """
     telegram_id = request.match_info.get('telegram_id')
     task_id = request.match_info.get('task_id')
-    complete = await check_task_complete(telegram_id, task_id)
+    complete = await check_task_complete(int(telegram_id), int(task_id))
     response_data = {'complete': complete}
     return web.json_response(response_data)
 
 
+@logger.catch
 async def delete_mes(request):
     """
     Удалить сообщение бота
@@ -87,28 +96,31 @@ async def delete_mes(request):
     return web.json_response(response_data, status=status)
 
 
+@logger.catch
 async def payment_post(request):
     """
     Функция, обрабатывающая оплату за размещение поста
     """
     data = await request.json()
     order_id = int(data.get('OrderId', None))
+    logger.info(f"Оплата размещения поста. Заказ - {order_id}")
     if order_id:
         async for session in get_async_session():
             order = await OrderRepository.get_order(session, order_id)
             post = await PostRepository.get_post(session, order.post_id)
             if order.paid and post.active:
-                break
+                return
             await OrderRepository.update_order(session, order.id, paid=True)
             chat_id, theme_id = post.channel_id.split('_')
             date_public = datetime.today().date()
             date_expired = date_public + timedelta(days=7)
-            main_theme = True if theme_id != 29 else False
+            main_theme = int(theme_id) != 29
+            free_theme = int(theme_id) != 237 and post.discount == 100
             data = {'product_name': post.name,
                     'product_price': post.price,
                     'price_discount': post.discounted_price,
                     'product_marketplace': post.marketplace,
-                    'account_url': post.account_url,
+                    'account_url': post.account_url.replace('_', '\_'),
                     'discount_proc': post.discount
                     }
             text = await create_text_for_post(data)
@@ -118,11 +130,20 @@ async def payment_post(request):
                                                               text, 29)
             else:
                 url_main_theme = url
-            await send_message(order.user_telegram, text="Ваше объявление оплачено, размещено в группе на 7 дней",
+            if free_theme:
+                url_free_theme = await public_post_in_channel(chat_id, post.photo,
+                                                              text, 237)
+            else:
+                url_free_theme = url
+            await send_message(order.user_telegram, text="Ваше объявление оплачено и размещено в группе на 7 дней\n"
+                                                         "Мы оповестим Вас,"
+                                                         " как только срок замещения публикации закончится",
                                url=url)
             await PostRepository.update_post(session, post.id, active=True,
                                              date_expired=date_expired, date_public=date_public,
-                                             url_message=url, method='money', url_message_main=url_main_theme)
+                                             url_message=url, method='money',
+                                             url_message_main=url_main_theme,
+                                             url_message_free=url_free_theme)
             await send_messages_for_admin(session, bot_admin, url, None)
 
     response_data = {'success': 'OK'}

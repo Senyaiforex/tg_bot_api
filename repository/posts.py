@@ -32,6 +32,7 @@ class PostRepository:
                 marketplace=marketplace,
                 **kwargs
         )
+
         session.add(new_post)
         await session.commit()
         await session.refresh(new_post)
@@ -111,7 +112,8 @@ class PostRepository:
         result = await session.execute(
                 select(Post).where(
                         or_(Post.url_message == url_message,
-                            Post.url_message_main == url_message)
+                            Post.url_message_main == url_message,
+                            Post.url_message_free == url_message)
                 )
         )
         post = result.scalars().first()
@@ -258,7 +260,8 @@ class PostRepository:
         return liquid_posts
 
     @classmethod
-    async def update_liquid_posts(cls, session: async_session, **kwargs) -> None:
+    async def update_liquid_posts(cls, session: async_session,
+                                  dict_param_liquid: dict[str, int]) -> None:
         """
         Обновить параметры пула ликвидности дял публикаций постов
         :param session: Асинхронная сессия
@@ -268,7 +271,7 @@ class PostRepository:
         stmt = (
                 update(LiquidPosts).
                 where(LiquidPosts.id == 1).
-                values(kwargs)
+                values(**dict_param_liquid)
         )
         await session.execute(stmt)
         await session.commit()

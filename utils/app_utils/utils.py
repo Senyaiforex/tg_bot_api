@@ -106,7 +106,7 @@ async def create_data_pull(pull: Pull) -> dict[str: tuple[int]]:
     """
     dict_data_pull = {
             "farming": (pull.farming, pull.current_farming, int(pull.current_farming / pull.farming * 100)),
-            "tasks": (pull.task, pull.current_task, int(pull.current_task / pull.task * 100)),
+            "tasks": (pull.tasks, pull.current_tasks, int(pull.current_tasks / pull.tasks * 100)),
             "friends": (pull.friends, pull.current_friends, int(pull.current_friends / pull.friends * 100)),
             "coins": (pull.coins, pull.current_coins, int(pull.current_coins / pull.coins * 100)),
             "plan": (pull.plan, pull.current_plan, int(pull.current_plan / pull.plan * 100))
@@ -229,8 +229,6 @@ async def get_friend_word(number: int) -> str:
             6: "друзей", 7: "друзей",
             8: "друзей", 9: "друзей"
     }
-
-    # Обработка исключений для 11-14
     if 11 <= number % 100 <= 14:
         return "друзей"
     # Окончание по последней цифре

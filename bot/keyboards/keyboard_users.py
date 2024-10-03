@@ -7,13 +7,9 @@ manager_tg = 'https://t.me/Broker_113'
 
 
 async def start_reply_keyboard():
-    catalog = [KeyboardButton(text="Каталог")]
     menu = [KeyboardButton(text="Меню")]
-    public_post = [KeyboardButton(text="Опубликовать пост")]
     keyboard = ReplyKeyboardMarkup(keyboard=[
-            catalog,
-            menu,
-            public_post,
+            menu
     ], resize_keyboard=True, is_persistent=True, one_time_keyboard=False)
     return keyboard
 
@@ -35,8 +31,11 @@ async def menu_keyboard():
     catalog = [InlineKeyboardButton(text='📂 Каталог с товаром',
                                     callback_data='catalog')]
     search_prod = [InlineKeyboardButton(text='🔍Лист ожидания', callback_data='products_search')]
+    delete_post_by_name = [InlineKeyboardButton(text='🗑Удалить объявление с моим упоминанием',
+                                                callback_data='delete_post_by_name')]
     group = [InlineKeyboardButton(text='👥 Группа', url=group_url)]
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[add_post, all_posts, catalog, search_prod, group])
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[add_post, all_posts, catalog,
+                                                     search_prod, group, delete_post_by_name])
     return keyboard
 
 
@@ -62,7 +61,7 @@ async def public_keyboard():
     """
     free_post = [InlineKeyboardButton(text='Разместить пост бесплатно',
                                       callback_data='add_post_free')]
-    coins_post = [InlineKeyboardButton(text='Разместить пост за монеты',
+    coins_post = [InlineKeyboardButton(text='Разместить пост за монеты - 10 000 монет',
                                        callback_data='add_post_coins')]
     # tokens_post = [InlineKeyboardButton(text='Разместить пост за токены',
     #                                     callback_data='add_post_tokens')]
@@ -85,25 +84,18 @@ async def public_keyboard():
 async def marketpalce_choice():
     wb = [KeyboardButton(text="WB")]
     ozon = [KeyboardButton(text="OZON")]
-    skip = [KeyboardButton(text="Пропустить")]
     keyboard = ReplyKeyboardMarkup(keyboard=[
             wb,
             ozon,
-            skip
-    ])
+    ], resize_keyboard=True)
     return keyboard
 
 
-async def channel_choice(method: str):
-    if method == "free":
-        # channel:-1002090610085_325
-        free = [InlineKeyboardButton(text='Товары бесплатно', callback_data='channel:-1002409284453_2')]
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[free])
-    else:
-        keyboard = InlineKeyboardMarkup(
-                inline_keyboard=[[InlineKeyboardButton(text=value,
-                                                       callback_data=f'channel:{key}')] for key, value in
-                                 channels.items()])
+async def channel_choice():
+    keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[[InlineKeyboardButton(text=value,
+                                                   callback_data=f'channel:{key}')] for key, value in
+                             channels.items()])
     return keyboard
 
 
@@ -136,8 +128,11 @@ async def search_keyboard():
 
 async def delete_search_keyboard(id_search):
     button = [InlineKeyboardButton(text='Удалить', callback_data=f'del_search_{id_search}')]
+    search_menu = [InlineKeyboardButton(text='Назад в меню',
+                                            callback_data=f'back_to_menu')]
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            button
+            button,
+            search_menu
     ])
     return keyboard
 
@@ -152,18 +147,21 @@ async def post_keyboard(post_id, active: bool) -> InlineKeyboardMarkup:
         buttons = [post_deactivate, post_delete]
     else:
         buttons = [post_public, post_delete]
+    post_menu = [InlineKeyboardButton(text='Назад в меню',
+                                            callback_data=f'back_to_menu')]
+    buttons.append(post_menu)
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
     return keyboard
 
 
-async def my_post_public_keyboard(id_post: str):
+async def my_post_public_keyboard(id_post: int):
     """
     Функция создаёт кнопки для размещения постов в группе
     :return: InlineKeyboardMarkup
     """
     free_post = [InlineKeyboardButton(text='Опубликовать бесплатно',
                                       callback_data=f'again_free_{id_post}')]
-    coins_post = [InlineKeyboardButton(text='Опубликовать за монеты',
+    coins_post = [InlineKeyboardButton(text='Опубликовать за монеты 10 000 монет',
                                        callback_data=f'again_coins_{id_post}')]
     # tokens_post = [InlineKeyboardButton(text='Разместить пост за токены',
     #                                     callback_data='add_post_tokens')]
@@ -179,3 +177,39 @@ async def my_post_public_keyboard(id_post: str):
     ]
     keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_inline)
     return keyboard
+
+
+async def username_keyboard(username: str) -> ReplyKeyboardMarkup:
+    back_button = [KeyboardButton(text="В меню")]
+    name_insert_button = [KeyboardButton(text=username)]
+    keyboard = ReplyKeyboardMarkup(keyboard=[
+            name_insert_button,
+            back_button
+    ], resize_keyboard=True, is_persistent=True, one_time_keyboard=False)
+    return keyboard
+
+
+async def search_keyboard_delete() -> InlineKeyboardMarkup:
+    menu_button = [InlineKeyboardButton(text="В меню", callback_data="back_to_menu")]
+    back_button = [InlineKeyboardButton(text="Назад", callback_data="products_search")]
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            back_button,
+            menu_button
+    ])
+    return keyboard
+
+
+async def delete_message_keyboard(id_message):
+    button_delete = [InlineKeyboardButton(text="Да", callback_data=f"message_del_{id_message}")]
+    menu_button = [InlineKeyboardButton(text="В меню", callback_data="back_to_menu")]
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            button_delete,
+            menu_button
+    ])
+    return keyboard
+
+
+menu_button = [InlineKeyboardButton(text="В меню", callback_data="back_to_menu")]
+back_menu_user = InlineKeyboardMarkup(inline_keyboard=[
+        menu_button
+])

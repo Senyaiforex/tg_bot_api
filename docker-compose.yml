@@ -1,18 +1,53 @@
 version: '3.8'
 
 services:
-  redis-bot:
+  redis-app:
     image: redis
     hostname: redis
     ports:
       - "6379:6379"
     networks:
       - my_network
+    env_file:
+      - .env
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    command: [
+      "redis-server",
+      "--maxmemory", "512mb",
+      "--maxmemory-policy", "allkeys-lru",
+      "--lazyfree-lazy-eviction", "yes"
+    ]
+  db-shop:
+    image: postgres:17.0
+    container_name: db_data
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -d ${POSTGRES_DB} -U ${POSTGRES_USER}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - my_network
+    env_file:
+      - .env
+    depends_on:
+      - redis-app
+    volumes:
+      - pgdata:/var/lib/postgresql/data  # Volume для данных БД
   fastapi:
     build:
       context: .
       dockerfile: ./app/Dockerfile
     container_name: fastapi_app
+    command: ["/app/apply_migrations.sh"]
     ports:
       - "8000:8000"
     volumes:
@@ -20,12 +55,15 @@ services:
       - ./repository:/app/repository
       - ./utils:/app/utils
       - ./database.py:/app/database.py
-      - ./app.db:/app/app.db
+      - ./app/logs:/app/logs
+      - ./migrations:/app/migrations
+      - ./alembic.ini:/app/alembic.ini
     depends_on:
-      - bot
+      - db-shop
     networks:
       - my_network
-
+    env_file:
+      - .env
   bot:
     build:
       context: .
@@ -38,10 +76,16 @@ services:
       - ./repository:/bot/repository
       - ./utils:/bot/utils
       - ./database.py:/bot/database.py
-      - ./app.db:/bot/app.db
       - ./media:/bot/media
+      - ./bot/logs:/bot/logs
     networks:
       - my_network
+    depends_on:
+      - fastapi
+    env_file:
+      - .env
+    logging:
+      driver: "none"
   celery-worker:
     build:
       context: .
@@ -53,13 +97,16 @@ services:
       - ./repository:/bot/repository
       - ./utils:/bot/utils
       - ./database.py:/bot/database.py
-      - ./app.db:/bot/app.db
+      - ./bot/logs:/bot/logs
     networks:
       - my_network
     depends_on:
-      - redis-bot
       - bot
-      - fastapi
+    env_file:
+      - .env
 networks:
   my_network:
     driver: bridge
+
+volumes:
+  pgdata:  # Определяем volume для PostgreSQL

@@ -1,10 +1,16 @@
+import os
+import sys
+import asyncio
+from sys import prefix
+
+from loguru import logger
 import aiohttp
 import uvicorn
+from redis import asyncio as aioredis
 from datetime import datetime
 from contextlib import asynccontextmanager
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from models import users_tasks
 from models.tasks import CategoryTask
 from repository.rank import RankRepository
@@ -17,13 +23,24 @@ from database import engine, async_session, Base
 from fixtures import *
 from schemes import *
 from utils.app_utils.utils import create_data_posts, create_data_pull, create_data_liquid, get_friend_word
+from fastapi_cache.backends.redis import RedisBackend
+from fastapi_cache import FastAPICache
+from fastapi_cache.decorator import cache
 
-TEST = True
+DEBUG = os.getenv("DEBUG")
+logger.add("logs/log_file.log",
+           retention=6, level="DEBUG",
+           rotation='20:00', compression="zip",
+           format="{time:MMMM D, YYYY - HH:mm:ss} {level} ---- {message}")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    redis = aioredis.from_url("redis://redis-app:6379", decode_responses=True)
+    FastAPICache.init(RedisBackend(redis), prefix="app-cache")
+    await FastAPICache.clear()
     async with engine.begin() as conn:
+        # await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     async with async_session() as session:
         await create_ranks(session)
@@ -31,13 +48,14 @@ async def lifespan(app: FastAPI):
         await create_liquid(session)
         await create_pull(session)
         await create_bank(session)
-        if TEST:
+        if DEBUG:
             await create_tasks(session)
             await create_random_users(session)
             await create_random_posts(session)
 
     yield
     await engine.dispose()
+    await redis.close()
 
 
 app = FastAPI(lifespan=lifespan, title="Buyer Bot API")
@@ -45,10 +63,16 @@ app = FastAPI(lifespan=lifespan, title="Buyer Bot API")
 
 @app.exception_handler(Exception)
 async def validation_exception_handler(request: Request, exc: Exception):
+    logger.error(exc, exc_info=True)
     return JSONResponse(
             status_code=500,
             content={"detail": str(exc)}
     )
+
+
+@cache()
+async def get_cache():
+    return 1
 
 
 app.add_middleware(
@@ -92,7 +116,9 @@ async def get_rank_info(id_telegram: Annotated[int, Path(description="Telegram I
             необходимых условий для получения следующего ранга.\n
     """
     user = await UserRepository.get_user_by_telegram_id(id_telegram, session)
-    next_rank = await RankRepository.get_next_rank(user.rank.id, session)
+    rank_instance_dict = {True: await RankRepository.get_next_rank(user.rank.id, session),
+                          False: user.rank}
+    next_rank = rank_instance_dict[user.rank.id < 100]
     friend_word = await get_friend_word(next_rank.required_friends)
     dict_condition = {
             next_rank.required_coins: (f"Заработать {next_rank.required_coins:,} монет"
@@ -121,10 +147,6 @@ async def get_user_friends(id_telegram: Annotated[int, Path(description="Telegra
 
     """
     friends = await UserRepository.get_friends(id_telegram, session)
-
-    if friends is None:
-        raise HTTPException(status_code=404, detail="User not found or no friends")
-
     return friends
 
 
@@ -138,8 +160,8 @@ async def get_coins(id_telegram: Annotated[int, Path(description="Telegram ID п
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий количество токенов.\n
     """
-    user = await UserRepository.get_user_by_telegram_id(id_telegram, session)
-    return JSONResponse(content={'count_coins': f'{user.count_coins}'})
+    coins = await UserRepository.get_count_coins(session, id_telegram)
+    return JSONResponse(content={'count_coins': f'{coins}'})
 
 
 @app.get("/api/get_top_users")
@@ -147,7 +169,8 @@ async def get_top_users(limit: int = Query(default=10, description='Количе
                         offset: int = Query(default=0, description='Пагинация'),
                         session=Depends(get_async_session)):
     """
-    • Описание: Возвращает топ пользователей отсортированных по count_coins.\n
+    • Описание: Возвращает топ пользователей отсортированных по total_coins
+                (общему количеству заработанных монет).\n
     • Параметры:\n
         ◦ limit (параметр запроса, int): Количество пользователей из топа.\n
         ◦ offset (параметр запроса, int): Пагинация.\n
@@ -168,8 +191,8 @@ async def get_pharmd(id_telegram: Annotated[int, Path(description="Telegram ID �
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий количество фарма.\n
     """
-    user = await UserRepository.get_user_by_telegram_id(id_telegram, session)
-    return JSONResponse(content={'count_pharmd': f'{user.count_pharmd}'})
+    pharmd = await UserRepository.get_count_pharmd(session, id_telegram)
+    return JSONResponse(content={'count_pharmd': f'{pharmd}'})
 
 
 @app.get("/api/get_transactions/{id_telegram}", response_model=list[HistoryTransactionOut])
@@ -191,6 +214,7 @@ async def get_transactions(id_telegram: Annotated[int, Path(description="Telegra
 
 
 @app.get('/api/check_task_complete/{id_telegram}/{id_task}')
+@logger.catch
 async def get_task_status(id_telegram: Annotated[int, Path(description="Telegram ID пользователя", gt=0)],
                           id_task: Annotated[int, Path(description="ID задачи", gt=0)],
                           session=Depends(get_async_session)):
@@ -207,10 +231,12 @@ async def get_task_status(id_telegram: Annotated[int, Path(description="Telegram
 
 
 @app.get('/api/tasks/{id_telegram}/', response_model=list[CategoriesOut])
+@logger.catch
 async def get_tasks(id_telegram: Annotated[int, Path(description="Telegram ID пользователя", gt=0)],
                     session=Depends(get_async_session)):
     """
-    • Описание: Метод для получения всех задач нужного типа \n
+    • Описание: Метод для получения всех задач, сгруппированных по категориям.
+                Также в ответе содержатся задачи, выполненные пользователем - completed\n
     • Параметры:\n
         ◦ нет\n
     • Ответ:\n
@@ -221,6 +247,7 @@ async def get_tasks(id_telegram: Annotated[int, Path(description="Telegram ID п
 
 
 @app.get('/api/count_members')
+@cache(expire=432 * 10**2)
 async def get_count_members(session=Depends(get_async_session)):
     """
     • Описание: Метод для получения количества продавцов и покупателей
@@ -238,6 +265,8 @@ async def get_count_members(session=Depends(get_async_session)):
 
 
 @app.get('/api/count_posts_by_type', response_model=list[PostsByType])
+@logger.catch
+@cache(expire=432 * 10**2)
 async def get_count_posts_by_type(session=Depends(get_async_session)):
     """
     • Описание: Метод для получения количества опубликованных постов
@@ -255,7 +284,9 @@ async def get_count_posts_by_type(session=Depends(get_async_session)):
 
     return [PostsByType(**inst) for inst in data]
 
+
 @app.get('/api/ranks_list', response_model=list[RankOutInfo])
+@cache(expire=12 * 10 ** 5)
 async def get_all_ranks(session: AsyncSession = Depends(get_async_session)):
     """
     • Описание: Метод для получения информации обо всех рангах
@@ -272,7 +303,10 @@ async def get_all_ranks(session: AsyncSession = Depends(get_async_session)):
     ranks = await RankRepository.get_all_ranks(session)
     return ranks
 
+
 @app.get('/api/pulls_info', response_model=list[PullOut])
+@logger.catch
+@cache(expire=900)
 async def pull_info(session: AsyncSession = Depends(get_async_session)):
     """
     • Описание: Метод для получения информации о пулле
@@ -297,6 +331,7 @@ async def pull_info(session: AsyncSession = Depends(get_async_session)):
 
 
 @app.get('/api/plan_info', response_model=list[PlanLiquidOut])
+@cache(expire=18 * 10 ** 3)
 async def plan_info(session: AsyncSession = Depends(get_async_session)):
     """
     • Описание: Метод для получения информации пуле ликвидности постов
@@ -345,6 +380,9 @@ async def change_coins(id_telegram: int, data_new: ChangeCoins,
     """
     user = await UserRepository.change_coins_by_id(id_telegram, data_new.amount, data_new.add,
                                                    data_new.description, session)
+    type_pull = 'current_farming' if data_new.description == 'farming' else "current_coins"
+    if data_new.add:
+        await PullRepository.update_pull(session, data_new.amount, type_pull)
     return JSONResponse(content={'id_telegram': f'{user.id_telegram}', 'count_coins': f'{user.count_coins}'})
 
 
@@ -359,7 +397,7 @@ async def change_pharmd(id_telegram: int, data_new: ChangePharmd,
         ◦ 200 OK: JSON объект, содержащий обновленную информацию о фарме пользователя.\n
     """
     user = await UserRepository.change_pharmd_by_id(id_telegram, data_new.amount, data_new.add, session)
-    if data_new.add:
+    if data_new.add:  # # # Здесь сделать изменение пулла фарма если description=farming
         await PullRepository.update_pull(session, data_new.amount, "current_farming")
     return JSONResponse(content={'id_telegram': f'{user.id_telegram}', 'count_pharmd': f'{user.count_pharmd}'})
 
@@ -395,8 +433,14 @@ async def delete_user(user: DeleteUser,
     return JSONResponse(content={"detail": "User deleted"})
 
 
+@app.delete("/api/cache-clear")
+async def clear_cache():
+    await FastAPICache.clear()
+    return {"message": "Cache cleared"}
+
+
 def main():
-    config = uvicorn.Config(app, host='127.0.0.1', port=8000, workers=8, log_level="info")
+    config = uvicorn.Config(app, host="0.0.0.0", port=8000, workers=8, log_level="info")
     server = uvicorn.Server(config)
     try:
         server.run()
