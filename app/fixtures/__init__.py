@@ -4,5 +4,5 @@ from .liquid import create_liquid
 from .tasks import create_tasks
 from .pulls import create_pull
 from .bank import create_bank
-from .users import create_random_users
+from .users import create_random_users, create_admins
 from .posts import create_random_posts

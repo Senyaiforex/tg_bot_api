@@ -64,7 +64,7 @@ async def get_count_subscribed(request):
         count = await bot.get_chat_member_count(chat_id=-1002090610085) - 5
     except TelegramBadRequest as ex:
         logger.error(str(ex), exc_info=True)
-        count = 1929
+        count = 1981
     return web.json_response({'count': count}, status=200)
 
 
@@ -114,8 +114,8 @@ async def payment_post(request):
             chat_id, theme_id = post.channel_id.split('_')
             date_public = datetime.today().date()
             date_expired = date_public + timedelta(days=7)
-            main_theme = int(theme_id) != 29
-            free_theme = int(theme_id) != 237 and post.discount == 100
+            main_theme = int(theme_id) != 12955
+            free_theme = int(theme_id) != 325 and post.discount == 100
             data = {'product_name': post.name,
                     'product_price': post.price,
                     'price_discount': post.discounted_price,
@@ -127,12 +127,12 @@ async def payment_post(request):
             url = await public_post_in_channel(chat_id, post.photo, text, theme_id)
             if main_theme:
                 url_main_theme = await public_post_in_channel(chat_id, post.photo,
-                                                              text, 29)
+                                                              text, 12955)
             else:
                 url_main_theme = url
             if free_theme:
                 url_free_theme = await public_post_in_channel(chat_id, post.photo,
-                                                              text, 237)
+                                                              text, 325)
             else:
                 url_free_theme = url
             await send_message(order.user_telegram, text="Ваше объявление оплачено и размещено в группе на 7 дней\n"

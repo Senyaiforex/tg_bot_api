@@ -48,6 +48,7 @@ async def lifespan(app: FastAPI):
         await create_liquid(session)
         await create_pull(session)
         await create_bank(session)
+        await create_admins(session)
         if DEBUG:
             await create_tasks(session)
             await create_random_users(session)
@@ -78,9 +79,9 @@ async def get_cache():
 app.add_middleware(
         CORSMiddleware,
         allow_credentials=True,
-        allow_origins=["*"],  # Разрешить все домены
-        allow_methods=["*"],  # Разрешить все методы (GET, POST, PUT, DELETE и т.д.)
-        allow_headers=["*"],  # Разрешить все заголовки
+        allow_origins=["77.232.134.161", "127.0.0.1", "188.68.160.86"],
+        allow_methods=["*"],
+        allow_headers=["*"],
 )
 
 
@@ -258,7 +259,7 @@ async def get_count_members(session=Depends(get_async_session)):
     """
     sellers = await UserRepository.get_users_with_posts_count(session)
     async with aiohttp.ClientSession() as session:
-        response = await session.get('http://bot:8443/count_subscribed')
+        response = await session.get('http://telegram_bot:8443/count_subscribed')
         content = await response.json()
         return JSONResponse(content={'sellers': sellers,
                                      'buyers': int(content.get('count')) - int(sellers)})

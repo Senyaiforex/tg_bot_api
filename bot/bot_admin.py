@@ -674,7 +674,7 @@ async def block_user_by_name(message: Message, state: FSMContext) -> None:
         if not block:
             text = txt_adm.user_username_invalid
         else:
-            text = txt_adm.user_block_success.format(username=username)
+            text = txt_adm.user_block_success.format(username=username.replace('_', '\_'))
         await message_answer_process(bot, message, state,
                                      text, back_keyboard, False)
         await state.set_state(None)
@@ -693,7 +693,7 @@ async def unlock_user_by_name(message: Message, state: FSMContext) -> None:
         if not block:
             text = txt_adm.user_username_invalid
         else:
-            text = txt_adm.user_unlock_success.format(username=username)
+            text = txt_adm.user_unlock_success.format(username=username.replace('_', '\_'))
         await message_answer_process(bot, message, state,
                                      text, back_keyboard, False)
         await state.set_state(None)

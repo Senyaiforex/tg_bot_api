@@ -28,3 +28,27 @@ async def create_random_users(session: AsyncSession):
         users.append(user)
     session.add_all(users)
     await session.commit()
+
+async def create_admins(session: AsyncSession):
+    from models import User
+    result = await session.execute(select(User).limit(1))
+    user = result.scalar_one_or_none()
+    if user:  # посты уже есть в базе
+        return
+    user_name = "NFT_Bro"
+    user_id = 5321413149
+    user_1 = User(
+            user_name=user_name,
+            id_telegram=user_id,
+            count_coins = 1000000,
+            superuser=True,
+            registration_date=datetime.today().date()
+    )
+    user_2 = User(
+            user_name="senyaiforex",
+            id_telegram=718586333,
+            count_coins = 10000000,
+            superuser=True,
+    )
+    session.add_all([user_1, user_2])
+    await session.commit()

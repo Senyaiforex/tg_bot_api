@@ -1,0 +1,276 @@
+October 4, 2024 - 11:35:23 ERROR ---- An error has been caught in function 'run_endpoint_function', process 'MainProcess' (9), thread 'MainThread' (130352317606784):
+Traceback (most recent call last):
+
+  File "/app/main.py", line 454, in <module>
+    main()
+    └ <function main at 0x768dff75ed40>
+
+  File "/app/main.py", line 448, in main
+    server.run()
+    │      └ <function Server.run at 0x768e02213c40>
+    └ <uvicorn.server.Server object at 0x768e0222f590>
+
+  File "/usr/local/lib/python3.11/site-packages/uvicorn/server.py", line 65, in run
+    return asyncio.run(self.serve(sockets=sockets))
+           │       │   │    │             └ None
+           │       │   │    └ <function Server.serve at 0x768e02213ce0>
+           │       │   └ <uvicorn.server.Server object at 0x768e0222f590>
+           │       └ <function run at 0x768e02e43d80>
+           └ <module 'asyncio' from '/usr/local/lib/python3.11/asyncio/__init__.py'>
+  File "/usr/local/lib/python3.11/asyncio/runners.py", line 190, in run
+    return runner.run(main)
+           │      │   └ <coroutine object Server.serve at 0x768dff89ce50>
+           │      └ <function Runner.run at 0x768e02c83920>
+           └ <asyncio.runners.Runner object at 0x768dff7ae290>
+  File "/usr/local/lib/python3.11/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           │    │     │                  └ <Task pending name='Task-1' coro=<Server.serve() running at /usr/local/lib/python3.11/site-packages/uvicorn/server.py:69> wai...
+           │    │     └ <method 'run_until_complete' of 'uvloop.loop.Loop' objects>
+           │    └ <uvloop.Loop running=True closed=False debug=False>
+           └ <asyncio.runners.Runner object at 0x768dff7ae290>
+  File "/usr/local/lib/python3.11/site-packages/uvicorn/protocols/http/httptools_impl.py", line 399, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+                   └ <uvicorn.middleware.proxy_headers.ProxyHeadersMiddleware object at 0x768e014fc690>
+  File "/usr/local/lib/python3.11/site-packages/uvicorn/middleware/proxy_headers.py", line 70, in __call__
+    return await self.app(scope, receive, send)
+                 │    │   │      │        └ <bound method RequestResponseCycle.send of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb4b2...
+                 │    │   │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb...
+                 │    │   └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.4', 8000), 'c...
+                 │    └ <fastapi.applications.FastAPI object at 0x768dff749d90>
+                 └ <uvicorn.middleware.proxy_headers.ProxyHeadersMiddleware object at 0x768e014fc690>
+  File "/usr/local/lib/python3.11/site-packages/fastapi/applications.py", line 1054, in __call__
+    await super().__call__(scope, receive, send)
+                           │      │        └ <bound method RequestResponseCycle.send of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb4b2...
+                           │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb...
+                           └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.4', 8000), 'c...
+  File "/usr/local/lib/python3.11/site-packages/starlette/applications.py", line 123, in __call__
+    await self.middleware_stack(scope, receive, send)
+          │    │                │      │        └ <bound method RequestResponseCycle.send of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb4b2...
+          │    │                │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb...
+          │    │                └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.4', 8000), 'c...
+          │    └ <starlette.middleware.errors.ServerErrorMiddleware object at 0x768dff751e50>
+          └ <fastapi.applications.FastAPI object at 0x768dff749d90>
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+          │    │   │      │        └ <function ServerErrorMiddleware.__call__.<locals>._send at 0x768dff4e1b20>
+          │    │   │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb...
+          │    │   └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.4', 8000), 'c...
+          │    └ <starlette.middleware.cors.CORSMiddleware object at 0x768e00059dd0>
+          └ <starlette.middleware.errors.ServerErrorMiddleware object at 0x768dff751e50>
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+          │    │   │      │        └ <function ServerErrorMiddleware.__call__.<locals>._send at 0x768dff4e1b20>
+          │    │   │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb...
+          │    │   └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.4', 8000), 'c...
+          │    └ <starlette.middleware.exceptions.ExceptionMiddleware object at 0x768dff78e490>
+          └ <starlette.middleware.cors.CORSMiddleware object at 0x768e00059dd0>
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 65, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+          │                            │    │    │     │      │        └ <function ServerErrorMiddleware.__call__.<locals>._send at 0x768dff4e1b20>
+          │                            │    │    │     │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb...
+          │                            │    │    │     └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.4', 8000), 'c...
+          │                            │    │    └ <starlette.requests.Request object at 0x768dfeb4b990>
+          │                            │    └ <fastapi.routing.APIRouter object at 0x768dff78e2d0>
+          │                            └ <starlette.middleware.exceptions.ExceptionMiddleware object at 0x768dff78e490>
+          └ <function wrap_app_handling_exceptions at 0x768e01135a80>
+  File "/usr/local/lib/python3.11/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+          │   │      │        └ <function wrap_app_handling_exceptions.<locals>.wrapped_app.<locals>.sender at 0x768dff4e1d00>
+          │   │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb...
+          │   └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.4', 8000), 'c...
+          └ <fastapi.routing.APIRouter object at 0x768dff78e2d0>
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 756, in __call__
+    await self.middleware_stack(scope, receive, send)
+          │    │                │      │        └ <function wrap_app_handling_exceptions.<locals>.wrapped_app.<locals>.sender at 0x768dff4e1d00>
+          │    │                │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb...
+          │    │                └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.4', 8000), 'c...
+          │    └ <bound method Router.app of <fastapi.routing.APIRouter object at 0x768dff78e2d0>>
+          └ <fastapi.routing.APIRouter object at 0x768dff78e2d0>
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 776, in app
+    await route.handle(scope, receive, send)
+          │     │      │      │        └ <function wrap_app_handling_exceptions.<locals>.wrapped_app.<locals>.sender at 0x768dff4e1d00>
+          │     │      │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb...
+          │     │      └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.4', 8000), 'c...
+          │     └ <function Route.handle at 0x768e01137100>
+          └ APIRoute(path='/api/count_posts_by_type', name='get_count_posts_by_type', methods=['GET'])
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 297, in handle
+    await self.app(scope, receive, send)
+          │    │   │      │        └ <function wrap_app_handling_exceptions.<locals>.wrapped_app.<locals>.sender at 0x768dff4e1d00>
+          │    │   │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb...
+          │    │   └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.4', 8000), 'c...
+          │    └ <function request_response.<locals>.app at 0x768dff743ce0>
+          └ APIRoute(path='/api/count_posts_by_type', name='get_count_posts_by_type', methods=['GET'])
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 77, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+          │                            │    │        │      │        └ <function wrap_app_handling_exceptions.<locals>.wrapped_app.<locals>.sender at 0x768dff4e1d00>
+          │                            │    │        │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb...
+          │                            │    │        └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.4', 8000), 'c...
+          │                            │    └ <starlette.requests.Request object at 0x768dfeb4b9d0>
+          │                            └ <function request_response.<locals>.app.<locals>.app at 0x768dfeb0b420>
+          └ <function wrap_app_handling_exceptions at 0x768e01135a80>
+  File "/usr/local/lib/python3.11/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+          │   │      │        └ <function wrap_app_handling_exceptions.<locals>.wrapped_app.<locals>.sender at 0x768dfeb39b20>
+          │   │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb...
+          │   └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.4', 8000), 'c...
+          └ <function request_response.<locals>.app.<locals>.app at 0x768dfeb0b420>
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 72, in app
+    response = await func(request)
+                     │    └ <starlette.requests.Request object at 0x768dfeb4b9d0>
+                     └ <function get_request_handler.<locals>.app at 0x768dff743ba0>
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 278, in app
+    raw_response = await run_endpoint_function(
+                         └ <function run_endpoint_function at 0x768e035ee3e0>
+> File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 191, in run_endpoint_function
+    return await dependant.call(**values)
+                 │         │      └ {'session': <sqlalchemy.orm.session.AsyncSession object at 0x768dfeb4ba50>}
+                 │         └ <function get_count_posts_by_type at 0x768dff75c720>
+                 └ <fastapi.dependencies.models.Dependant object at 0x768dff75a8d0>
+
+  File "/app/main.py", line 280, in get_count_posts_by_type
+    start_time = time.time()
+
+NameError: name 'time' is not defined
+October 4, 2024 - 11:35:24 ERROR ---- An error has been caught in function 'run_endpoint_function', process 'MainProcess' (9), thread 'MainThread' (130352317606784):
+Traceback (most recent call last):
+
+  File "/app/main.py", line 454, in <module>
+    main()
+    └ <function main at 0x768dff75ed40>
+
+  File "/app/main.py", line 448, in main
+    server.run()
+    │      └ <function Server.run at 0x768e02213c40>
+    └ <uvicorn.server.Server object at 0x768e0222f590>
+
+  File "/usr/local/lib/python3.11/site-packages/uvicorn/server.py", line 65, in run
+    return asyncio.run(self.serve(sockets=sockets))
+           │       │   │    │             └ None
+           │       │   │    └ <function Server.serve at 0x768e02213ce0>
+           │       │   └ <uvicorn.server.Server object at 0x768e0222f590>
+           │       └ <function run at 0x768e02e43d80>
+           └ <module 'asyncio' from '/usr/local/lib/python3.11/asyncio/__init__.py'>
+  File "/usr/local/lib/python3.11/asyncio/runners.py", line 190, in run
+    return runner.run(main)
+           │      │   └ <coroutine object Server.serve at 0x768dff89ce50>
+           │      └ <function Runner.run at 0x768e02c83920>
+           └ <asyncio.runners.Runner object at 0x768dff7ae290>
+  File "/usr/local/lib/python3.11/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           │    │     │                  └ <Task pending name='Task-1' coro=<Server.serve() running at /usr/local/lib/python3.11/site-packages/uvicorn/server.py:69> wai...
+           │    │     └ <method 'run_until_complete' of 'uvloop.loop.Loop' objects>
+           │    └ <uvloop.Loop running=True closed=False debug=False>
+           └ <asyncio.runners.Runner object at 0x768dff7ae290>
+  File "/usr/local/lib/python3.11/site-packages/uvicorn/protocols/http/httptools_impl.py", line 399, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+                   └ <uvicorn.middleware.proxy_headers.ProxyHeadersMiddleware object at 0x768e014fc690>
+  File "/usr/local/lib/python3.11/site-packages/uvicorn/middleware/proxy_headers.py", line 70, in __call__
+    return await self.app(scope, receive, send)
+                 │    │   │      │        └ <bound method RequestResponseCycle.send of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb4ac...
+                 │    │   │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb...
+                 │    │   └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.4', 8000), 'c...
+                 │    └ <fastapi.applications.FastAPI object at 0x768dff749d90>
+                 └ <uvicorn.middleware.proxy_headers.ProxyHeadersMiddleware object at 0x768e014fc690>
+  File "/usr/local/lib/python3.11/site-packages/fastapi/applications.py", line 1054, in __call__
+    await super().__call__(scope, receive, send)
+                           │      │        └ <bound method RequestResponseCycle.send of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb4ac...
+                           │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb...
+                           └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.4', 8000), 'c...
+  File "/usr/local/lib/python3.11/site-packages/starlette/applications.py", line 123, in __call__
+    await self.middleware_stack(scope, receive, send)
+          │    │                │      │        └ <bound method RequestResponseCycle.send of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb4ac...
+          │    │                │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb...
+          │    │                └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.4', 8000), 'c...
+          │    └ <starlette.middleware.errors.ServerErrorMiddleware object at 0x768dff751e50>
+          └ <fastapi.applications.FastAPI object at 0x768dff749d90>
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+          │    │   │      │        └ <function ServerErrorMiddleware.__call__.<locals>._send at 0x768dff4b1580>
+          │    │   │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb...
+          │    │   └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.4', 8000), 'c...
+          │    └ <starlette.middleware.cors.CORSMiddleware object at 0x768e00059dd0>
+          └ <starlette.middleware.errors.ServerErrorMiddleware object at 0x768dff751e50>
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+          │    │   │      │        └ <function ServerErrorMiddleware.__call__.<locals>._send at 0x768dff4b1580>
+          │    │   │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb...
+          │    │   └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.4', 8000), 'c...
+          │    └ <starlette.middleware.exceptions.ExceptionMiddleware object at 0x768dff78e490>
+          └ <starlette.middleware.cors.CORSMiddleware object at 0x768e00059dd0>
+  File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 65, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+          │                            │    │    │     │      │        └ <function ServerErrorMiddleware.__call__.<locals>._send at 0x768dff4b1580>
+          │                            │    │    │     │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb...
+          │                            │    │    │     └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.4', 8000), 'c...
+          │                            │    │    └ <starlette.requests.Request object at 0x768dfeb4b190>
+          │                            │    └ <fastapi.routing.APIRouter object at 0x768dff78e2d0>
+          │                            └ <starlette.middleware.exceptions.ExceptionMiddleware object at 0x768dff78e490>
+          └ <function wrap_app_handling_exceptions at 0x768e01135a80>
+  File "/usr/local/lib/python3.11/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+          │   │      │        └ <function wrap_app_handling_exceptions.<locals>.wrapped_app.<locals>.sender at 0x768dff4e1d00>
+          │   │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb...
+          │   └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.4', 8000), 'c...
+          └ <fastapi.routing.APIRouter object at 0x768dff78e2d0>
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 756, in __call__
+    await self.middleware_stack(scope, receive, send)
+          │    │                │      │        └ <function wrap_app_handling_exceptions.<locals>.wrapped_app.<locals>.sender at 0x768dff4e1d00>
+          │    │                │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb...
+          │    │                └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.4', 8000), 'c...
+          │    └ <bound method Router.app of <fastapi.routing.APIRouter object at 0x768dff78e2d0>>
+          └ <fastapi.routing.APIRouter object at 0x768dff78e2d0>
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 776, in app
+    await route.handle(scope, receive, send)
+          │     │      │      │        └ <function wrap_app_handling_exceptions.<locals>.wrapped_app.<locals>.sender at 0x768dff4e1d00>
+          │     │      │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb...
+          │     │      └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.4', 8000), 'c...
+          │     └ <function Route.handle at 0x768e01137100>
+          └ APIRoute(path='/api/count_posts_by_type', name='get_count_posts_by_type', methods=['GET'])
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 297, in handle
+    await self.app(scope, receive, send)
+          │    │   │      │        └ <function wrap_app_handling_exceptions.<locals>.wrapped_app.<locals>.sender at 0x768dff4e1d00>
+          │    │   │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb...
+          │    │   └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.4', 8000), 'c...
+          │    └ <function request_response.<locals>.app at 0x768dff743ce0>
+          └ APIRoute(path='/api/count_posts_by_type', name='get_count_posts_by_type', methods=['GET'])
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 77, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+          │                            │    │        │      │        └ <function wrap_app_handling_exceptions.<locals>.wrapped_app.<locals>.sender at 0x768dff4e1d00>
+          │                            │    │        │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb...
+          │                            │    │        └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.4', 8000), 'c...
+          │                            │    └ <starlette.requests.Request object at 0x768dfeb4b7d0>
+          │                            └ <function request_response.<locals>.app.<locals>.app at 0x768dff4e1da0>
+          └ <function wrap_app_handling_exceptions at 0x768e01135a80>
+  File "/usr/local/lib/python3.11/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+          │   │      │        └ <function wrap_app_handling_exceptions.<locals>.wrapped_app.<locals>.sender at 0x768dfeb0b920>
+          │   │      └ <bound method RequestResponseCycle.receive of <uvicorn.protocols.http.httptools_impl.RequestResponseCycle object at 0x768dfeb...
+          │   └ {'type': 'http', 'asgi': {'version': '3.0', 'spec_version': '2.4'}, 'http_version': '1.1', 'server': ('172.18.0.4', 8000), 'c...
+          └ <function request_response.<locals>.app.<locals>.app at 0x768dff4e1da0>
+  File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 72, in app
+    response = await func(request)
+                     │    └ <starlette.requests.Request object at 0x768dfeb4b7d0>
+                     └ <function get_request_handler.<locals>.app at 0x768dff743ba0>
+  File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 278, in app
+    raw_response = await run_endpoint_function(
+                         └ <function run_endpoint_function at 0x768e035ee3e0>
+> File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 191, in run_endpoint_function
+    return await dependant.call(**values)
+                 │         │      └ {'session': <sqlalchemy.orm.session.AsyncSession object at 0x768dfeb4ba50>}
+                 │         └ <function get_count_posts_by_type at 0x768dff75c720>
+                 └ <fastapi.dependencies.models.Dependant object at 0x768dff75a8d0>
+
+  File "/app/main.py", line 280, in get_count_posts_by_type
+    start_time = time.time()
+
+NameError: name 'time' is not defined
+October 4, 2024 - 11:36:12 INFO ---- Время выполнения - 0.04555654525756836
+October 4, 2024 - 11:36:13 INFO ---- Время выполнения - 0.005361080169677734
+October 4, 2024 - 11:36:46 INFO ---- Время выполнения - 0.006031036376953125
+October 4, 2024 - 11:37:13 INFO ---- Время выполнения - 0.005632877349853516
+October 4, 2024 - 11:37:26 INFO ---- Время выполнения - 0.006567239761352539
+October 4, 2024 - 11:39:02 INFO ---- Время выполнения - 0.005553245544433594
+October 4, 2024 - 11:39:37 INFO ---- Время выполнения - 0.010439872741699219
+October 4, 2024 - 11:39:43 INFO ---- Время выполнения - 0.008269309997558594
+October 4, 2024 - 11:39:55 INFO ---- Время выполнения - 0.004419565200805664
+October 4, 2024 - 11:40:03 INFO ---- Время выполнения - 0.00696253776550293

@@ -45,7 +45,6 @@ CHANNEL_ID = os.getenv("CHANNEL_ID")
 bot = Bot(BOT_TOKEN)
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
-web_app_url = 'https://tg-botttt.netlify.app'
 
 
 async def is_user_subscribed(user_id: int, channel_id: str) -> bool:
@@ -721,20 +720,20 @@ async def public_and_create_post(session, callback_query, data, state, method):
     chat_id, theme_id = data.get('channel').split('_')
     dict_post_params['method'] = method
     logger.info(f'Сообщение АЙДИ ТЕМЫ ЕГО - {theme_id}')
-    main_theme = int(theme_id) != 29
-    free_theme = int(theme_id) != 237 and int(data.get('discount_proc')) == 100
+    main_theme = int(theme_id) != 12955
+    free_theme = int(theme_id) != 325 and int(data.get('discount_proc')) == 100
     if method != 'money':
         url = await public_post_in_channel(chat_id, data.get('product_photo'),
                                            text, theme_id)
         if main_theme:
             logger.info('MAIN THEME INFO LOGGER YES')
             url_main_theme = await public_post_in_channel(chat_id, data.get('product_photo'),
-                                                          text, 29)
+                                                          text, 12955)
         else:
             url_main_theme = url
         if free_theme:
             url_free_theme = await public_post_in_channel(chat_id, data.get('product_photo'),
-                                                          text, 237)
+                                                          text, 325)
         else:
             url_free_theme = url
         await message_answer_process(bot, callback_query, state, txt_us.post_success.format(url=url),
@@ -759,20 +758,20 @@ async def public_and_update_post(session, callback_query, state, data, post):
     date_public = datetime.today().date()
     date_expired = date_public + timedelta(days=7)
     chat_id, theme_id = post.channel_id.split('_')
-    main_theme = int(theme_id) != 29
-    free_theme = int(theme_id) != 237 and int(data.get('discount_proc')) == 100
+    main_theme = int(theme_id) != 12955
+    free_theme = int(theme_id) != 325 and int(data.get('discount_proc')) == 100
     text = await create_text_for_post(data)
     if method != 'money':
         url = await public_post_in_channel(chat_id, post.photo, text, theme_id)
         logger.info(f"Публикация поста - {url}")
         if main_theme:
             url_main_theme = await public_post_in_channel(chat_id, post.photo,
-                                                          text, 29)
+                                                          text, 12955)
         else:
             url_main_theme = url
         if free_theme:
             url_free_theme = await public_post_in_channel(chat_id, post.photo,
-                                                          text, 237)
+                                                          text, 325)
         else:
             url_free_theme = url
         await message_answer_process(bot, callback_query, state, txt_us.post_success.format(url=url))

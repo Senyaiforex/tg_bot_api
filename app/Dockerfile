@@ -15,6 +15,6 @@ RUN chmod +x /app/apply_migrations.sh
 RUN ln -s /models /app/models \
     && ln -s /repository /app/repository \
     && ln -s /utils /app/utils \
-    && ln -s /database.py /app/database.py
-# Указываем команду запуска FastAPI
-#CMD ["python", "main.py"]
+    && ln -s /database.py /app/database.py \
+
+ENTRYPOINT ["app/apply_migrations.sh"]
