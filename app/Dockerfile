@@ -17,4 +17,4 @@ RUN ln -s /models /app/models \
     && ln -s /utils /app/utils \
     && ln -s /database.py /app/database.py \
 
-ENTRYPOINT ["sh", "app/apply_migrations.sh"]
+ENTRYPOINT ["sh", "apply_migrations.sh"]
