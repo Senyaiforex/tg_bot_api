@@ -8,8 +8,8 @@ WORKDIR /app
 COPY ./app/requirements.txt /app/requirements.txt
 RUN pip install --upgrade pip
 RUN pip install -r /app/requirements.txt
-COPY . /app
-RUN chmod +x ./app/apply_migrations.sh
+COPY ./app /app
+RUN chmod +x /app/apply_migrations.sh
 
 ## Создаем символические ссылки на общие модули
 #RUN ln -s /models /app/models \
