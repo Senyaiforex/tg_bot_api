@@ -75,13 +75,18 @@ async def validation_exception_handler(request: Request, exc: Exception):
 async def get_cache():
     return 1
 
-
+origins = [
+        "http://localhost:8000",
+        "https://tgbuyer.ru",
+]
 app.add_middleware(
         CORSMiddleware,
         allow_credentials=True,
-        allow_origins=["77.232.134.161", "127.0.0.1", "188.68.160.86"],
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_origins=origins,
+        allow_methods=["GET", "POST", "OPTIONS", "DELETE", "PATCH", "PUT"],
+        allow_headers=["Content-Type", "Set-Cookie", "Access-Control-Allow-Credentials",
+                       "Access-Control-Allow-Headers", "Access-Control-Allow-Methods",
+                       "Access-Control-Allow-Origin"],
 )
 
 
