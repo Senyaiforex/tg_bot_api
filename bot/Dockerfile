@@ -13,10 +13,10 @@ COPY ./bot /bot
 
 
 # Создаем символические ссылки на общие модули
-RUN ln -s /models /bot/models \
-    && ln -s /repository /bot/repository \
-    && ln -s /utils /bot/utils \
-    && ln -s /database.py /bot/database.py
+#RUN ln -s /models /bot/models \
+#    && ln -s /repository /bot/repository \
+#    && ln -s /utils /bot/utils \
+#    && ln -s /database.py /bot/database.py
 
 # Указываем команду запуска бота
 CMD ["python", "bot_main.py"]
