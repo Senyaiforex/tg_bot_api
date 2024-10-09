@@ -49,11 +49,6 @@ async def lifespan(app: FastAPI):
         await create_pull(session)
         await create_bank(session)
         await create_admins(session)
-        if DEBUG:
-            await create_tasks(session)
-            await create_random_users(session)
-            await create_random_posts(session)
-
     yield
     await engine.dispose()
     await redis.close()
