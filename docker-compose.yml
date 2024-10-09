@@ -20,28 +20,6 @@ services:
       "--maxmemory-policy", "allkeys-lru",
       "--lazyfree-lazy-eviction", "yes"
     ]
-  db-shop:
-    image: postgres:17.0
-    container_name: db_data
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -d ${POSTGRES_DB} -U ${POSTGRES_USER}" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - my_network
-    env_file:
-      - .env
-    depends_on:
-      - redis-app
-    volumes:
-      - pgdata:/var/lib/postgresql/data  # Volume для данных БД
   fastapi:
     build:
       context: .
@@ -59,7 +37,7 @@ services:
       - ./migrations:/app/migrations
       - ./alembic.ini:/app/alembic.ini
     depends_on:
-      - db-shop
+      - redis-app
     networks:
       - my_network
     env_file:
@@ -107,6 +85,3 @@ services:
 networks:
   my_network:
     driver: bridge
-
-volumes:
-  pgdata:  # Определяем volume для PostgreSQL

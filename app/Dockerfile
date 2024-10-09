@@ -5,7 +5,7 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Копируем файлы, относящиеся к FastAPI
-COPY requirements.txt /app/requirements.txt
+COPY .app/requirements.txt /app/requirements.txt
 RUN pip install --upgrade pip
 RUN pip install -r /app/requirements.txt
 COPY . /app
@@ -17,4 +17,4 @@ RUN ln -s /models /app/models \
     && ln -s /utils /app/utils \
     && ln -s /database.py /app/database.py
 
-ENTRYPOINT ["sh", "/app/apply_migrations.sh"]
+#ENTRYPOINT ["sh", "/app/apply_migrations.sh"]
