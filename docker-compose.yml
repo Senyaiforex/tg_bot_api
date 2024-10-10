@@ -62,8 +62,6 @@ services:
       - fastapi
     env_file:
       - .env
-    logging:
-      driver: "none"
   celery-worker:
     build:
       context: .
