@@ -73,7 +73,9 @@ async def get_cache():
 
 origins = [
         "http://82.97.243.54",
-        "https://tgbuyer.ru"
+        "https://82.97.243.54",
+        "https://tgbuyer.ru",
+        "https://app.tgbuyer.ru",
         "http://app.tgbuyer.ru",
 ]
 app.add_middleware(
