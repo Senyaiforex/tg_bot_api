@@ -103,6 +103,7 @@ async def message_answer_process(bot: Bot,
         except TelegramBadRequest as e:
             pass
     else:
+        await object_interaction.answer()
         user_id = object_interaction.from_user.id
         msg = await object_interaction.message.answer(text=text,
                                                       reply_markup=keyboard,
