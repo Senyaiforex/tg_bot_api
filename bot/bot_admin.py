@@ -139,7 +139,7 @@ async def delete_admin(message: Message, session, state: FSMContext) -> None:
     """
     await state.set_state(None)
     await message_answer_process(bot, message, state,
-                                 txt_adm.add_telegram,
+                                 txt_adm.username_delete_adm,
                                  back_keyboard, False)
     await state.set_state(States.wait_username_admin_block)
 
@@ -571,7 +571,7 @@ async def add_username_admin(message: Message, session, state: FSMContext) -> No
 @dp.message(States.wait_username_admin_block)
 @logger.catch
 @permissions_check
-async def wait_username_admin_delete(message: Message, session, state: FSMContext) -> None:
+async def wait_username_admin_delete(message: Message, session: object, state: FSMContext) -> None:
     """
     Функция обработки отправки username пользователя,
     для удаления его из администраторов
