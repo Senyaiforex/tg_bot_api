@@ -62,6 +62,7 @@ async def process_menu_message(picture: FSInputFile,
         user_id = object_interaction.chat.id
         await object_interaction.delete()
     else:
+        await object_interaction.answer()
         user_id = object_interaction.from_user.id
 
     data = await state.get_data()
