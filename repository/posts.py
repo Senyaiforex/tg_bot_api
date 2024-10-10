@@ -1,4 +1,4 @@
-from sqlalchemy import select, func
+from sqlalchemy import select, func, case
 from database import async_session
 from sqlalchemy import select, delete, update, or_, and_
 from models import Post, LiquidPosts
@@ -160,53 +160,69 @@ class PostRepository:
         :return: Количество постов
         :rtype: list[int
         """
+        # date_dict = {"today": date,
+        #              'week': date - timedelta(days=7),
+        #              'month': date - timedelta(days=30)}
+        # date_new = date_dict[type_date]
+        # count_free = await session.execute(
+        #         select(func.count(Post.id))
+        #         .where(
+        #                 and_(
+        #                         Post.date_public >= date_new,
+        #                         Post.method == 'free'
+        #                 )
+        #         ))
+        # count_coins = await session.execute(
+        #         select(func.count(Post.id))
+        #         .where(
+        #                 and_(
+        #                         Post.date_public >= date_new,
+        #                         Post.method == 'coins'
+        #                 )
+        #         ))
+        # count_token = await session.execute(
+        #         select(func.count(Post.id))
+        #         .where(
+        #                 and_(
+        #                         Post.date_public >= date_new,
+        #                         Post.method == 'token'
+        #                 )
+        #         ))
+        # count_money = await session.execute(
+        #         select(func.count(Post.id))
+        #         .where(
+        #                 and_(
+        #                         Post.date_public >= date_new,
+        #                         Post.method == 'money'
+        #                 )
+        #         ))
+        # count_stars = await session.execute(
+        #         select(func.count(Post.id))
+        #         .where(
+        #                 and_(
+        #                         Post.date_public >= date_new,
+        #                         Post.method == 'stars'
+        #                 )
+        #         ))
+        # counts_posts = [count_free.scalar(), count_token.scalar(),
+        #                 count_coins.scalar(), count_money.scalar(),
+        #                 count_stars.scalar()]
         date_dict = {"today": date,
                      'week': date - timedelta(days=7),
                      'month': date - timedelta(days=30)}
-        date = date_dict[type_date]
-        count_free = await session.execute(
-                select(func.count(Post.id))
-                .where(
-                        and_(
-                                Post.date_public >= date,
-                                Post.method == 'free'
-                        )
-                ))
-        count_coins = await session.execute(
-                select(func.count(Post.id))
-                .where(
-                        and_(
-                                Post.date_public >= date,
-                                Post.method == 'coins'
-                        )
-                ))
-        count_token = await session.execute(
-                select(func.count(Post.id))
-                .where(
-                        and_(
-                                Post.date_public >= date,
-                                Post.method == 'token'
-                        )
-                ))
-        count_money = await session.execute(
-                select(func.count(Post.id))
-                .where(
-                        and_(
-                                Post.date_public >= date,
-                                Post.method == 'money'
-                        )
-                ))
-        count_stars = await session.execute(
-                select(func.count(Post.id))
-                .where(
-                        and_(
-                                Post.date_public >= date,
-                                Post.method == 'stars'
-                        )
-                ))
-        counts_posts = [count_free.scalar(), count_token.scalar(),
-                        count_coins.scalar(), count_money.scalar(),
-                        count_stars.scalar()]
+        date_limit = date_dict[type_date]
+        counts = await session.execute(
+                select(
+                        func.count(case([(Post.method == 'free', 1)])).label('count_free'),
+                        func.count(case([(Post.method == 'coins', 1)])).label('count_coins'),
+                        func.count(case([(Post.method == 'token', 1)])).label('count_token'),
+                        func.count(case([(Post.method == 'money', 1)])).label('count_money'),
+                        func.count(case([(Post.method == 'stars', 1)])).label('count_stars')
+                ).where(Post.date_public >= date_limit)
+        )
+
+        # Извлечение результатов
+        counts_posts = counts.fetchone()
         return counts_posts
 
     @classmethod
