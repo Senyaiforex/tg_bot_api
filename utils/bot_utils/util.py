@@ -238,7 +238,6 @@ async def create_dict_params(data: dict, user_id):
 
 
 async def create_text_for_post(data):
-    url = data.get('account_url').replace('_', '\_')
     text = txt_us.post.format(
             name=data.get('product_name'),
             value=data.get('product_price') - data.get('price_discount'),
@@ -246,7 +245,7 @@ async def create_text_for_post(data):
             price=data.get('product_price'),
             price_discount=data.get('price_discount'),
             marketplace=data.get('product_marketplace', 'Нет'),
-            url=url
+            url=data.get('account_url')
     )
     return text
 
