@@ -120,7 +120,7 @@ async def payment_post(request):
                     'product_price': post.price,
                     'price_discount': post.discounted_price,
                     'product_marketplace': post.marketplace,
-                    'account_url': post.account_url.replace('_', '\_'),
+                    'account_url': post.account_url,
                     'discount_proc': post.discount
                     }
             text = await create_text_for_post(data)

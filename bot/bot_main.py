@@ -732,7 +732,7 @@ async def public_post_in_channel(chat_id, photo_path, text, theme_id) -> str:
     if not os.path.isfile(file_path):
         raise FileNotFoundError(f"Файл по пути {file_path} не найден")
     msg = await bot.send_photo(chat_id=chat_id, photo=FSInputFile(file_path), caption=text,
-                               reply_to_message_id=theme_id)
+                               reply_to_message_id=theme_id, parse_mode='Markdown')
     return msg.get_url()
 
 
