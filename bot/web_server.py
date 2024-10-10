@@ -145,9 +145,11 @@ async def payment_post(request):
                                              url_message_main=url_main_theme,
                                              url_message_free=url_free_theme)
             await send_messages_for_admin(session, bot_admin, url, None)
-
-    response_data = {'success': 'OK'}
-    return web.json_response(response_data, status=200)
+        response_data = {'success': 'OK'}
+        return web.json_response(response_data, status=200)
+    else:
+        response_data = {'error': 'NOT ORDER'}
+        return web.json_response(response_data, status=400)
 
 
 app = web.Application()
