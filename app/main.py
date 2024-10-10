@@ -70,18 +70,17 @@ async def validation_exception_handler(request: Request, exc: Exception):
 async def get_cache():
     return 1
 
+
 origins = [
-        "http://localhost:8000",
+        "82.97.243.54",
         "http://app.tgbuyer.ru",
-        "https://tgbuyer.ru",
 ]
 app.add_middleware(
         CORSMiddleware,
         allow_credentials=True,
         allow_origins=origins,
         allow_methods=["GET", "POST", "OPTIONS", "DELETE", "PATCH", "PUT"],
-        allow_headers=["Content-Type", "Set-Cookie",
-                       "Access-Control-Allow-Headers", "Access-Control-Allow-Methods",
+        allow_headers=["Content-Type", "Set-Cookie", "Access-Control-Allow-Headers", "Access-Control-Allow-Methods",
                        "Access-Control-Allow-Origin"],
 )
 
@@ -249,7 +248,7 @@ async def get_tasks(id_telegram: Annotated[int, Path(description="Telegram ID п
 
 
 @app.get('/api/count_members')
-@cache(expire=432 * 10**2)
+@cache(expire=432 * 10 ** 2)
 async def get_count_members(session=Depends(get_async_session)):
     """
     • Описание: Метод для получения количества продавцов и покупателей
@@ -268,7 +267,7 @@ async def get_count_members(session=Depends(get_async_session)):
 
 @app.get('/api/count_posts_by_type', response_model=list[PostsByType])
 @logger.catch
-@cache(expire=432 * 10**2)
+@cache(expire=432 * 10 ** 2)
 async def get_count_posts_by_type(session=Depends(get_async_session)):
     """
     • Описание: Метод для получения количества опубликованных постов
