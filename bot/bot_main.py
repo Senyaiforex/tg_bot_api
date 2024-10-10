@@ -82,7 +82,7 @@ async def start(message: Message, command: CommandObject) -> None:
     """
     Функция обработки команды /start, для начала работы с ботом
     """
-    picture = FSInputFile('static/start_pic.jpg')
+    picture = FSInputFile('static/menu_pic.jpg')
     user_id = message.from_user.id
     username = message.from_user.username
     inviter_id = None
@@ -91,9 +91,8 @@ async def start(message: Message, command: CommandObject) -> None:
         inviter_id = int(args.split("_")[2])
     if await is_user_subscribed(user_id, CHANNEL_ID):
         # Если пользователь подписан, показываем меню
-        text = "Добро пожаловать!\n"
-        keyboard_reply = await start_reply_keyboard()
-        await bot.send_photo(user_id, caption=text, photo=picture, parse_mode='Markdown',
+        keyboard_reply = await menu_keyboard()
+        await bot.send_photo(user_id, photo=picture, parse_mode='Markdown',
                              reply_markup=keyboard_reply)
     else:
         keyboard = await start_keyboard()

@@ -186,7 +186,7 @@ class TaskRepository:
                 select(Task)
                 .where(Task.date_limit > today)
         )
-        tasks_all = query_tasks.result.scalars().all()
+        tasks_all = query_tasks.scalars().all()
         return tasks_all
 
     @classmethod
