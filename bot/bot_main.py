@@ -854,7 +854,7 @@ async def again_public(callback_query: CallbackQuery, state: FSMContext) -> None
                 'product_price': post.price,
                 'price_discount': post.discounted_price,
                 'product_marketplace': post.marketplace,
-                'account_url': post.account_url.replace('_', '\_'),
+                'account_url': post.account_url,
                 'discount_proc': post.discount
                 }
         if method == 'free':
