@@ -248,7 +248,7 @@ async def get_tasks(id_telegram: Annotated[int, Path(description="Telegram ID п
 
 
 @app.get('/api/count_members')
-@cache(expire=432 * 10 ** 2)
+@cache(expire=3600)
 async def get_count_members(session=Depends(get_async_session)):
     """
     • Описание: Метод для получения количества продавцов и покупателей
@@ -267,7 +267,7 @@ async def get_count_members(session=Depends(get_async_session)):
 
 @app.get('/api/count_posts_by_type', response_model=list[PostsByType])
 @logger.catch
-@cache(expire=432 * 10 ** 2)
+@cache(expire=3600)
 async def get_count_posts_by_type(session=Depends(get_async_session)):
     """
     • Описание: Метод для получения количества опубликованных постов
@@ -332,7 +332,7 @@ async def pull_info(session: AsyncSession = Depends(get_async_session)):
 
 
 @app.get('/api/plan_info', response_model=list[PlanLiquidOut])
-@cache(expire=18 * 10 ** 3)
+@cache(expire=3600)
 async def plan_info(session: AsyncSession = Depends(get_async_session)):
     """
     • Описание: Метод для получения информации пуле ликвидности постов
