@@ -72,17 +72,13 @@ async def get_cache():
 
 
 origins = [
-        "http://82.97.243.54",
-        "https://82.97.243.54",
-        "https://tgbuyer.ru",
-        "https://app.tgbuyer.ru",
-        "http://app.tgbuyer.ru",
+        "*",
 ]
 app.add_middleware(
         CORSMiddleware,
         allow_credentials=True,
         allow_origins=origins,
-        allow_methods=["GET", "POST", "OPTIONS", "DELETE", "PATCH", "PUT"],
+        allow_methods=["*"],
         allow_headers=["*"],
 )
 
