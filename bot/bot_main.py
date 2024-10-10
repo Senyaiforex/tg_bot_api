@@ -245,9 +245,9 @@ async def search_products(callback_query: CallbackQuery, state: FSMContext) -> N
     """
     Функция обработки нажатия на inline-кнопку «🔍Лист ожидания»
     """
-
-    await message_answer_process(bot, callback_query,
-                                 state, txt_us.info_search, keyboard=await search_keyboard())
+    await callback_query.message.edit_text(text=txt_us.info_search, reply_markup=await search_keyboard())
+    # await message_answer_process(bot, callback_query,
+    #                              state, txt_us.info_search, keyboard=await search_keyboard())
 
 
 @dp.callback_query(lambda c: c.data == 'list_search')
