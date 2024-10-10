@@ -70,11 +70,29 @@ def subscribed(func):
             if user and user.active == False:
                 await message.answer(txt_us.block)
                 return
+            elif not user:
+                await UserRepository.create_user_tg(user_id, message.from_user.username, session)
         return await func(message, *args, **kwargs)
 
     return wrapper
 
+def subscribed_call(func):
+    @functools.wraps(func)
+    async def wrapper(callback: CallbackQuery, *args, **kwargs):
+        user_id = callback.from_user.id
+        if not await is_user_subscribed(user_id, CHANNEL_ID):
+            await callback.message.answer(txt_us.no_subscribe)
+            return
+        async for session in get_async_session():
+            user = await UserRepository.get_user_tg(user_id, session)
+            if user and user.active == False:
+                await callback.message.answer(txt_us.block)
+                return
+            elif not user:
+                await UserRepository.create_user_tg(user_id, callback.from_user.username, session)
+        return await func(callback, *args, **kwargs)
 
+    return wrapper
 
 @dp.message(Command("start"))
 @logger.catch
@@ -153,6 +171,7 @@ async def menu(message: Message, state: FSMContext) -> None:
 
 
 @dp.callback_query(lambda c: c.data == 'back_to_menu')
+@subscribed_call
 async def back_to_menu(callback_query: CallbackQuery, state: FSMContext) -> None:
     """
     Функция обработки нажатия на inline-кнопку «В меню»
@@ -164,6 +183,7 @@ async def back_to_menu(callback_query: CallbackQuery, state: FSMContext) -> None
 
 
 @dp.callback_query(lambda c: c.data == 'public')
+@subscribed_call
 async def add_post_query(callback_query: CallbackQuery, state: FSMContext) -> None:
     """
     Функция обработки нажатия на inline-кнопку «Опубликовать пост»
@@ -187,6 +207,7 @@ async def add_post_query(callback_query: CallbackQuery, state: FSMContext) -> No
 
 
 @dp.callback_query(lambda c: c.data == 'catalog')
+@subscribed_call
 async def catalog_query(callback_query: CallbackQuery, state: FSMContext) -> None:
     """
     Функция обработки нажатия на inline-кнопку «Каталог товаров»
@@ -199,6 +220,7 @@ async def catalog_query(callback_query: CallbackQuery, state: FSMContext) -> Non
 
 
 @dp.callback_query(lambda c: c.data == 'search')
+@subscribed_call
 async def search_query(callback_query: CallbackQuery, state: FSMContext) -> None:
     """
     Функция обработки нажатия на inline-кнопку «➕Добавить товар в лист ожидания»
@@ -218,6 +240,7 @@ async def search_query(callback_query: CallbackQuery, state: FSMContext) -> None
 
 
 @dp.callback_query(lambda c: c.data == 'products_search')
+@subscribed_call
 async def search_products(callback_query: CallbackQuery, state: FSMContext) -> None:
     """
     Функция обработки нажатия на inline-кнопку «🔍Лист ожидания»
@@ -229,6 +252,7 @@ async def search_products(callback_query: CallbackQuery, state: FSMContext) -> N
 
 @dp.callback_query(lambda c: c.data == 'list_search')
 @logger.catch
+@subscribed_call
 async def list_search(callback_query: CallbackQuery, state: FSMContext) -> None:
     """
     Функция обработки нажатия на inline-кнопку «📋Список товаров в листе ожидания»
@@ -272,6 +296,7 @@ async def del_search(callback_query: CallbackQuery, state: FSMContext) -> None:
                                  back_keyboard)
 
 @dp.callback_query(lambda c: c.data.startswith('add_post'))
+@subscribed_call
 async def add_post(callback_query: CallbackQuery, state: FSMContext) -> None:
     """
     Функция обработки нажатия на inline-кнопки для добавления поста
@@ -296,6 +321,7 @@ async def add_post(callback_query: CallbackQuery, state: FSMContext) -> None:
 
 @dp.callback_query(lambda c: c.data.startswith('all_posts'))
 @logger.catch
+@subscribed_call
 async def post_list(callback_query: CallbackQuery, state: FSMContext) -> None:
     """
     Функция обработки нажатия на inline-кнопку «📋Мои объявления»
@@ -380,6 +406,7 @@ async def deactivate_post(callback_query: CallbackQuery, state: FSMContext) -> N
 
 
 @dp.callback_query(lambda c: c.data.startswith('public_again'))
+@subscribed_call
 async def public_my_post(callback_query: CallbackQuery, state: FSMContext) -> None:
     """
     Функция обработки нажатия на inline-кнопку «Опубликовать »
