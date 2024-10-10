@@ -207,22 +207,41 @@ class PostRepository:
         # counts_posts = [count_free.scalar(), count_token.scalar(),
         #                 count_coins.scalar(), count_money.scalar(),
         #                 count_stars.scalar()]
-        date_dict = {"today": date,
-                     'week': date - timedelta(days=7),
-                     'month': date - timedelta(days=30)}
+        # Подготовка даты
+        date_dict = {
+                "today": date,
+                'week': date - timedelta(days=7),
+                'month': date - timedelta(days=30)
+        }
         date_limit = date_dict[type_date]
-        counts = await session.execute(
+
+        # Запрос для подсчета всех типов постов
+        result = await session.execute(
                 select(
-                        func.count(case([(Post.method == 'free', 1)])).label('count_free'),
-                        func.count(case([(Post.method == 'coins', 1)])).label('count_coins'),
-                        func.count(case([(Post.method == 'token', 1)])).label('count_token'),
-                        func.count(case([(Post.method == 'money', 1)])).label('count_money'),
-                        func.count(case([(Post.method == 'stars', 1)])).label('count_stars')
+                        func.count(case((Post.method == 'free', 1))).label('count_free'),
+                        func.count(case((Post.method == 'coins', 1))).label('count_coins'),
+                        func.count(case((Post.method == 'token', 1))).label('count_token'),
+                        func.count(case((Post.method == 'money', 1))).label('count_money'),
+                        func.count(case((Post.method == 'stars', 1))).label('count_stars')
                 ).where(Post.date_public >= date_limit)
         )
 
         # Извлечение результатов
-        counts_posts = counts.fetchone()
+        counts = result.fetchone()
+
+        # Если результат None, возвращаем нули
+        if counts is None:
+            return [0, 0, 0, 0, 0]
+
+        # Подготовка списка результатов
+        counts_posts = [
+                counts.count_free or 0,
+                counts.count_coins or 0,
+                counts.count_token or 0,
+                counts.count_money or 0,
+                counts.count_stars or 0
+        ]
+
         return counts_posts
 
     @classmethod
