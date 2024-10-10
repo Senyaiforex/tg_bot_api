@@ -72,14 +72,16 @@ async def get_cache():
 
 
 origins = [
-        "*",
+        "https://app.tgbuyer.ru",
 ]
 app.add_middleware(
         CORSMiddleware,
         allow_credentials=True,
         allow_origins=origins,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "OPTIONS", "DELETE", "PATCH", "PUT"],
+        allow_headers=["Content-Type", "Ngrok-Skip-Browser-Warning", "User-Agent",
+                       "Connection", "Set-Cookie", "Access-Control-Allow-Origin"
+                       "Access-Control-Allow-Headers", "Access-Control-Allow-Methods"],
 )
 
 
