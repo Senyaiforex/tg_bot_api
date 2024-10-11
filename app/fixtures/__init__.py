@@ -4,3 +4,4 @@ from .liquid import create_liquid
 from .pulls import create_pull
 from .bank import create_bank
 from .users import create_admins
+from .sellers import create_sellers

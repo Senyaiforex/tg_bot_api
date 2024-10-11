@@ -2,7 +2,7 @@ import re
 import asyncio
 import emoji
 from aiogram import Bot, Dispatcher, F
-from aiogram.types import Message, FSInputFile, CallbackQuery
+from aiogram.types import Message, FSInputFile, CallbackQuery, Chat
 from aiogram.filters import Command, CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -76,6 +76,7 @@ def subscribed(func):
 
     return wrapper
 
+
 def subscribed_call(func):
     @functools.wraps(func)
     async def wrapper(callback: CallbackQuery, *args, **kwargs):
@@ -93,6 +94,7 @@ def subscribed_call(func):
         return await func(callback, *args, **kwargs)
 
     return wrapper
+
 
 @dp.message(Command("start"))
 @logger.catch
@@ -293,6 +295,7 @@ async def del_search(callback_query: CallbackQuery, state: FSMContext) -> None:
     await message_answer_process(bot, callback_query, state,
                                  "Ваше сообщение удалено",
                                  back_keyboard)
+
 
 @dp.callback_query(lambda c: c.data.startswith('add_post'))
 @subscribed_call
@@ -766,6 +769,7 @@ async def public_and_create_post(session, callback_query, data, state, method):
         await create_post_user(session, bot, **dict_post_params,
                                active=True, url_message=url, url_message_free=url_free_theme,
                                url_message_main=url_main_theme)
+        await SellerRepository.seller_add(session)
         await send_messages_for_admin(session, bot_admin, url, username)
     else:
         post_id = await create_post_user(session, bot, **dict_post_params)
@@ -878,6 +882,15 @@ async def again_public(callback_query: CallbackQuery, state: FSMContext) -> None
                 await message_answer_process(bot, callback_query, state, txt_us.not_coins)
         else:
             await public_and_update_post(session, callback_query, state, data, post)
+
+
+@dp.message()
+async def handle_message(message: Message):
+    if message.chat.type in ['group', 'supergroup']:
+        topic_number = message.reply_to_message.message_id if message.reply_to_message else 0
+        if topic_number == 12955 and message.photo:
+            async for session in get_async_session():
+                await SellerRepository.seller_add(session)
 
 
 async def get_channel_id_by_url(url: str) -> str:

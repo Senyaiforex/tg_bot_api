@@ -14,7 +14,7 @@ from bot_main import check_task_complete, public_post_in_channel, bot
 from loguru import logger
 from bot_admin import bot as bot_admin
 from database import async_session
-from repository import OrderRepository, PostRepository
+from repository import OrderRepository, PostRepository, SellerRepository
 from utils.bot_utils.messages import send_messages_for_admin
 from utils.bot_utils.util import create_text_for_post
 
@@ -144,6 +144,7 @@ async def payment_post(request):
                                              url_message=url, method='money',
                                              url_message_main=url_main_theme,
                                              url_message_free=url_free_theme)
+            await SellerRepository.seller_add(session)
             await send_messages_for_admin(session, bot_admin, url, None)
         response_data = {'success': 'OK'}
         return web.json_response(response_data, status=200)

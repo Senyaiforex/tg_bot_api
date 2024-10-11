@@ -7,7 +7,7 @@ from celery import Celery
 from celery.schedules import crontab
 from bot_main import bot
 from database import async_session
-from repository import PostRepository, TaskRepository, UserRepository
+from repository import PostRepository, TaskRepository, UserRepository, SellerRepository
 from bot_admin import bot as admin_bot
 from models import User
 from utils.bot_utils.text_static import txt_adm, txt_us
@@ -29,6 +29,7 @@ app = Celery(
 app.conf.timezone = 'Europe/Moscow'
 
 loop = asyncio.get_event_loop()
+
 
 async def get_async_session() -> async_session:
     async with async_session() as session:
@@ -63,6 +64,10 @@ def check_posts():
 def check_tasks():
     asyncio.run(work_tasks())
 
+@app.task
+def check_sellers():
+    asyncio.run(work_sellers())
+
 @logger.catch
 async def work_tasks():
     async for session in get_async_session():
@@ -73,6 +78,13 @@ async def work_tasks():
             await send_messages_for_admin(admin_bot, admins, txt_adm.task_expired.format(name=task.description,
                                                                                          url=task.url))
             await TaskRepository.task_delete_by_celery(session, task.id)
+
+
+@logger.catch
+async def work_sellers():
+    async for session in get_async_session():
+        await SellerRepository.sellers_clear(session)
+
 
 @logger.catch
 async def work_posts():
@@ -107,4 +119,8 @@ def setup_periodic_tasks(sender, **kwargs):
     sender.add_periodic_task(
             crontab(hour=10, minute=30),
             check_tasks.s(), name='check_task-every-10-30'
+    )
+    sender.add_periodic_task(
+            crontab(hour=0, minute=0),
+            check_sellers.s(), name='clear_sellers-every-day'
     )

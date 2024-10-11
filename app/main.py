@@ -18,7 +18,7 @@ from utils.app_utils import check_task_complete, create_data_tasks
 from fastapi.params import Path, Annotated, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, Depends, Request, HTTPException
-from repository import UserRepository, PostRepository, TaskRepository, PullRepository
+from repository import UserRepository, PostRepository, TaskRepository, PullRepository, SellerRepository
 from database import engine, async_session, Base
 from fixtures import *
 from schemes import *
@@ -49,6 +49,7 @@ async def lifespan(app: FastAPI):
         await create_pull(session)
         await create_bank(session)
         await create_admins(session)
+        await create_sellers(session)
     yield
     await engine.dispose()
     await redis.close()
@@ -248,7 +249,7 @@ async def get_tasks(id_telegram: Annotated[int, Path(description="Telegram ID п
 
 
 @app.get('/api/count_members')
-@cache(expire=3600)
+@cache(expire=1800)
 async def get_count_members(session=Depends(get_async_session)):
     """
     • Описание: Метод для получения количества продавцов и покупателей
@@ -257,7 +258,7 @@ async def get_count_members(session=Depends(get_async_session)):
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий количество продавцов sellers и покупателей buyers
     """
-    sellers = await UserRepository.get_users_with_posts_count(session)
+    sellers = await SellerRepository.get_count_sellers(session)
     async with aiohttp.ClientSession() as session:
         response = await session.get('http://telegram_bot:8443/count_subscribed')
         content = await response.json()
@@ -267,7 +268,7 @@ async def get_count_members(session=Depends(get_async_session)):
 
 @app.get('/api/count_posts_by_type', response_model=list[PostsByType])
 @logger.catch
-@cache(expire=3600)
+@cache(expire=1800)
 async def get_count_posts_by_type(session=Depends(get_async_session)):
     """
     • Описание: Метод для получения количества опубликованных постов
@@ -332,7 +333,7 @@ async def pull_info(session: AsyncSession = Depends(get_async_session)):
 
 
 @app.get('/api/plan_info', response_model=list[PlanLiquidOut])
-@cache(expire=3600)
+@cache(expire=1800)
 async def plan_info(session: AsyncSession = Depends(get_async_session)):
     """
     • Описание: Метод для получения информации пуле ликвидности постов

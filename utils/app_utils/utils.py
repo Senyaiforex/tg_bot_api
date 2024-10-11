@@ -79,7 +79,7 @@ async def create_data_posts(session: async_session, posts_count: list[int],
         need_percent = max(100 - current_percent, 0)
         list_models.append({
                 "name": dict_type_posts[index][0],
-                "price": dict_type_posts[index][2],
+                "price": dict_type_posts[index][2] * posts_count[index],
                 "data": [current_percent, need_percent],
                 "current": posts_count[index],
                 "need": dict_type_posts[index][1]
