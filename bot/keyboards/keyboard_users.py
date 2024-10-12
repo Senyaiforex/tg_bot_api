@@ -61,20 +61,18 @@ async def public_keyboard():
     """
     free_post = [InlineKeyboardButton(text='Разместить пост бесплатно',
                                       callback_data='add_post_free')]
-    coins_post = [InlineKeyboardButton(text='Разместить пост за монеты - 10 000 монет',
+    coins_post = [InlineKeyboardButton(text='Разместить пост за монеты',
                                        callback_data='add_post_coins')]
     # tokens_post = [InlineKeyboardButton(text='Разместить пост за токены',
     #                                     callback_data='add_post_tokens')]
     rub_post = [InlineKeyboardButton(text='Разместить пост за рубли',
                                      callback_data='add_post_money')]
-    help_but = [InlineKeyboardButton(text='Написать менеджеру', url=manager_tg)]
     back_but = [InlineKeyboardButton(text='⬅️ В меню', callback_data='back_to_menu')]
     keyboard_inline = [
             free_post,
             coins_post,
             # tokens_post,
             rub_post,
-            help_but,
             back_but
     ]
     keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_inline)

@@ -300,7 +300,6 @@ async def del_search(callback_query: CallbackQuery, state: FSMContext) -> None:
                                  "Ваше сообщение удалено",
                                  back_keyboard)
 
-
 @dp.callback_query(lambda c: c.data.startswith('add_post'))
 @subscribed_call
 async def add_post(callback_query: CallbackQuery, state: FSMContext) -> None:
@@ -320,8 +319,9 @@ async def add_post(callback_query: CallbackQuery, state: FSMContext) -> None:
                                              back_keyboard)
                 return
     await state.update_data(method=method)
+    text = dict_text[method]
     await message_answer_process(bot, callback_query,
-                                 state, txt_us.name_product, back_keyboard)
+                                 state, text, back_keyboard)
     await state.set_state(PostStates.wait_name)
 
 
