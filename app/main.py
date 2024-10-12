@@ -263,7 +263,7 @@ async def get_count_members(session=Depends(get_async_session)):
         response = await session.get('http://telegram_bot:8443/count_subscribed')
         content = await response.json()
         return JSONResponse(content={'sellers': sellers,
-                                     'buyers': int(content.get('count')) - int(sellers)})
+                                     'buyers': int(content.get('count'))})
 
 
 @app.get('/api/count_posts_by_type', response_model=list[PostsByType])

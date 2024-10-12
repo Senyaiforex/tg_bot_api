@@ -61,7 +61,7 @@ async def get_count_subscribed(request):
     Получает количество подписчиков
     """
     try:
-        count = await bot.get_chat_member_count(chat_id=-1002090610085) - 5
+        count = await bot.get_chat_member_count(chat_id=-1002090610085)
     except TelegramBadRequest as ex:
         logger.error(str(ex), exc_info=True)
         count = 1981
