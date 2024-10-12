@@ -98,7 +98,7 @@ def subscribed_call(func):
 
 @dp.message(Command("start"))
 @logger.catch
-async def start(message: Message, command: CommandObject) -> None:
+async def start(message: Message, command: CommandObject, state: FSMContext) -> None:
     """
     Функция обработки команды /start, для начала работы с ботом
     """
@@ -109,6 +109,10 @@ async def start(message: Message, command: CommandObject) -> None:
     args = command.args
     if args and args.startswith("invited_by_"):
         inviter_id = int(args.split("_")[2])
+    elif args and args.startswith("products_search"):
+        await message_answer_process(bot, message,
+                                     state, txt_us.info_search, keyboard=await search_keyboard())
+        return
     if await is_user_subscribed(user_id, CHANNEL_ID):
         # Если пользователь подписан, показываем меню
         keyboard_reply = await menu_keyboard()

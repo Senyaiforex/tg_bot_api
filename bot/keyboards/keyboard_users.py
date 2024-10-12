@@ -119,9 +119,12 @@ async def search_keyboard():
     list_search = [InlineKeyboardButton(text='📋Список товаров в листе ожидания',
                                         callback_data='list_search')]
     add_product = [InlineKeyboardButton(text='➕Добавить товар в лист ожидания', callback_data='search')]
+    back_menu = [InlineKeyboardButton(text='Назад в меню',
+                                            callback_data=f'back_to_menu')]
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
             list_search,
-            add_product
+            add_product,
+            back_menu
     ])
     return keyboard
 
