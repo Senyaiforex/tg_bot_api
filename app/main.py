@@ -382,7 +382,7 @@ async def change_coins(id_telegram: int, data_new: ChangeCoins,
     """
     user = await UserRepository.change_coins_by_id(id_telegram, data_new.amount, data_new.add,
                                                    data_new.description, session)
-    type_pull = 'current_farming' if data_new.description == 'farming' else "current_coins"
+    type_pull = 'current_farming' if data_new.description == 'Farming' else "current_coins"
     if data_new.add:
         await PullRepository.update_pull(session, data_new.amount, type_pull)
     return JSONResponse(content={'id_telegram': f'{user.id_telegram}', 'count_coins': f'{user.count_coins}'})

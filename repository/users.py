@@ -221,7 +221,6 @@ class UserRepository:
         if user is None:
             raise HTTPException(status_code=404, detail="User not found")
         if add:
-            description = 'Начисление за фарминг монет' if description == 'farming' else description
             await user.update_count_coins(session, amount, description)
         else:
             if user.count_coins < amount:
