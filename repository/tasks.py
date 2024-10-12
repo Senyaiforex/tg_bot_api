@@ -184,7 +184,7 @@ class TaskRepository:
         """
         query_tasks = await session.execute(
                 select(Task)
-                .where(Task.date_limit > today)
+                .where(Task.date_limit < today)
         )
         tasks_all = query_tasks.scalars().all()
         return tasks_all
