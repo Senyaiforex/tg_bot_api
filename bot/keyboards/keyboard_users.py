@@ -27,11 +27,11 @@ async def menu_keyboard():
     """
     add_post = [InlineKeyboardButton(text='📥 Разместить пост в группе',
                                      callback_data='public')]
-    all_posts = [InlineKeyboardButton(text='📋Мои объявления', callback_data='all_posts')]
+    all_posts = [InlineKeyboardButton(text='📋 Мои объявления', callback_data='all_posts')]
     catalog = [InlineKeyboardButton(text='📂 Каталог с товаром',
                                     callback_data='catalog')]
-    search_prod = [InlineKeyboardButton(text='🔍Лист ожидания', callback_data='products_search')]
-    delete_post_by_name = [InlineKeyboardButton(text='🗑Удалить объявление с моим упоминанием',
+    search_prod = [InlineKeyboardButton(text='🔍 Лист ожидания', callback_data='products_search')]
+    delete_post_by_name = [InlineKeyboardButton(text='🗑 Удалить пост с моим упоминанием',
                                                 callback_data='delete_post_by_name')]
     group = [InlineKeyboardButton(text='👥 Группа', url=group_url)]
     keyboard = InlineKeyboardMarkup(inline_keyboard=[add_post, all_posts, catalog,
