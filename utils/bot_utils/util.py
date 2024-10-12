@@ -12,7 +12,6 @@ from repository import UserRepository, PostRepository, TaskRepository, PullRepos
 from fastapi import HTTPException
 from .text_static import *
 
-GROUP_ID = -1002409284453
 
 CHANNEL_ID = os.getenv("CHANNEL_ID")
 

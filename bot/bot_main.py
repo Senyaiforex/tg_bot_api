@@ -291,7 +291,7 @@ async def del_search(callback_query: CallbackQuery, state: FSMContext) -> None:
     Функция обработки подтверждения удаления сообщения из группы
     """
     message_id = callback_query.data.split('_')[2]
-    await delete_message(bot, -1002409284453, int(message_id))
+    await delete_message(bot, -1002090610085, int(message_id))
     await message_answer_process(bot, callback_query, state,
                                  "Ваше сообщение удалено",
                                  back_keyboard)
@@ -538,7 +538,7 @@ async def wait_url_post(message: Message, state: FSMContext) -> None:
     try:
         id_message = url.split('/')[5]
         msg = await bot.forward_message(chat_id=message.from_user.id,
-                                        from_chat_id=-1002409284453,
+                                        from_chat_id=-1002090610085,
                                         message_id=int(id_message))
     except (IndexError, TelegramBadRequest, TelegramForbiddenError) as ex:
         await message_answer_process(bot, message, state,
