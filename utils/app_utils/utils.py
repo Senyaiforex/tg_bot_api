@@ -114,12 +114,10 @@ async def create_data_pull(pull: Pull) -> dict[str: tuple[int]]:
     return dict_data_pull
 
 
-dict_cat = {'subscribe': "Подписки",
-            "games": "Игры",
+dict_cat = {'task': 'Задания',
+            'subscribe': "Подписки",
             "watch": "Видео",
-            "like": "Лайки",
-            "comment": "Комментарии",
-            "save": "Избранное",
+            "games": "Игры",
             "bonus": "Бонусы"}
 
 async def create_data_tasks(task_validator: BaseModel,

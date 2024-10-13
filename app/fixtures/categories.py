@@ -9,7 +9,7 @@ async def create_categories(session: AsyncSession):
     from models import CategoryTask
 
     categories = [
-            'subscribe', 'games', 'watch', 'like', 'comment', 'save', 'bonus'
+            'task', 'subscribe', 'watch', 'games', 'bonus'
     ]
     result = await session.execute(select(CategoryTask).limit(1))
     category_exists = result.scalar_one_or_none()

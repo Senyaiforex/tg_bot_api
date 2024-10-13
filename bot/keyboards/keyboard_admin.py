@@ -85,11 +85,9 @@ async def select_type_task() -> InlineKeyboardMarkup:
     menu_inline_buttons = [
             [InlineKeyboardButton(text='Подписка на канал(группу)', callback_data='task_subscribe'),
              InlineKeyboardButton(text='Просмотр видео', callback_data='task_watch')],
-            [InlineKeyboardButton(text='Поставить лайк', callback_data='task_like'),
-             InlineKeyboardButton(text='Добавить в избранное', callback_data='task_save')],
-            [InlineKeyboardButton(text='Оставить комментарий', callback_data='task_comment'),
-             InlineKeyboardButton(text='Бонусы', callback_data='task_bonus')],
-            [InlineKeyboardButton(text='Игра', callback_data='task_games')]
+            [InlineKeyboardButton(text='Бонусы', callback_data='task_bonus'),
+             InlineKeyboardButton(text='Игра', callback_data='task_games')],
+            [InlineKeyboardButton(text='Другие задания', callback_data='task_task')],
     ]
     keyboard = InlineKeyboardMarkup(
             inline_keyboard=menu_inline_buttons,

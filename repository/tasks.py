@@ -11,13 +11,11 @@ from models.tasks import CategoryTask
 
 class TaskRepository:
     dict_categories = {
-            'subscribe': 1,
-            'games': 2,
+            'task': 1,
+            'subscribe': 2,
             'watch': 3,
-            'like': 4,
-            'comment': 5,
-            'save': 6,
-            'bonus': 7
+            'games': 4,
+            'bonus': 5
     }
     @classmethod
     async def get_task_by_id(cls, task_id: int, session: async_session) -> Task:

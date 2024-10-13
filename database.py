@@ -6,7 +6,7 @@ import os
 
 DOCKER = os.getenv("DOCKER")
 user = os.getenv("POSTGRES_USER") if DOCKER else 'senyaiforex'
-password = os.getenv("POSTGRES_PASSWORD") if DOCKER else 'admin123'
+password = os.getenv("POSTGRES_PASSWORD") if DOCKER else 'senya2516'
 db_name = os.getenv("POSTGRES_DB") if DOCKER else 'db'
 db_host = os.getenv("POSTGRES_HOST") if DOCKER else '127.0.0.1'
 
