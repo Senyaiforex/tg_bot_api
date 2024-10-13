@@ -114,6 +114,14 @@ async def create_data_pull(pull: Pull) -> dict[str: tuple[int]]:
     return dict_data_pull
 
 
+dict_cat = {'subscribe': "Подписки",
+            "games": "Игры",
+            "watch": "Видео",
+            "like": "Лайки",
+            "comment": "Комментарии",
+            "save": "Избранное",
+            "bonus": "Бонусы"}
+
 async def create_data_tasks(task_validator: BaseModel,
                             category_validator: BaseModel,
                             telegram_id: int,
@@ -143,12 +151,12 @@ async def create_data_tasks(task_validator: BaseModel,
 
         categories_output.append(category_validator(
                 id=category.id,
-                name=category.name,
+                name=dict_cat[category.name],
                 tasks=tasks_not_completed
         ))
     categories_output.append(category_validator(
             id=8,
-            name='completed',
+            name='Завершённые',
             tasks=completed_tasks
     ))
     return categories_output

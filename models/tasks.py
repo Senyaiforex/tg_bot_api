@@ -1,4 +1,3 @@
-
 from sqlalchemy import Column, String, Integer, Date, ForeignKey
 from .users import users_tasks
 from sqlalchemy.orm import relationship
@@ -17,6 +16,7 @@ class Task(Base):
     url = Column(String, comment='Ссылка на задачу', index=True)
     users = relationship("User", secondary=users_tasks, back_populates='tasks')
     date_limit = Column(Date, comment="Дата действия задания")
+
 
 class CategoryTask(Base):
     """
