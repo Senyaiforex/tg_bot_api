@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from pydantic import BaseModel
 
-from repository import TaskRepository, UserRepository, PostRepository
+from repository import TaskRepository, UserRepository, PostRepository, SellerRepository
 from database import async_session
 from models import Pull
 
@@ -87,11 +87,12 @@ async def create_data_posts(session: async_session, posts_count: list[int],
     if today_count or today_count == 0:
         current_percent = min(int(today_count / 200 * 100), 100)
         need_percent = max(100 - current_percent, 0)
+        post_by_sellers = await SellerRepository.get_count_sellers(session)
         list_models.append({
                 "name": 'Посты за день',
                 "price": 0,
                 "data": [current_percent, need_percent],
-                "current": today_count,
+                "current": today_count + post_by_sellers,
                 "need": 200
         })
     return list_models
