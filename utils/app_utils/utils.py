@@ -153,7 +153,7 @@ async def create_data_tasks(task_validator: BaseModel,
                 tasks=tasks_not_completed
         ))
     categories_output.append(category_validator(
-            id=8,
+            id=6,
             name='Завершённые',
             tasks=completed_tasks
     ))
