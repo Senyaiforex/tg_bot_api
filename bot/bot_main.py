@@ -751,14 +751,12 @@ async def public_and_create_post(session, callback_query, data, state, method):
     dict_post_params = await create_dict_params(data, user_id)
     chat_id, theme_id = data.get('channel').split('_')
     dict_post_params['method'] = method
-    logger.info(f'Сообщение АЙДИ ТЕМЫ ЕГО - {theme_id}')
     main_theme = int(theme_id) != 12955
     free_theme = int(theme_id) != 325 and int(data.get('discount_proc')) == 100
     if method != 'money':
         url = await public_post_in_channel(chat_id, data.get('product_photo'),
                                            text, theme_id)
         if main_theme:
-            logger.info('MAIN THEME INFO LOGGER YES')
             url_main_theme = await public_post_in_channel(chat_id, data.get('product_photo'),
                                                           text, 12955)
         else:
@@ -774,6 +772,7 @@ async def public_and_create_post(session, callback_query, data, state, method):
                                active=True, url_message=url, url_message_free=url_free_theme,
                                url_message_main=url_main_theme)
         await SellerRepository.seller_add(session)
+        await PostRepository.increment_liquid_posts(session, {f'current_{method}': 1})
         await send_messages_for_admin(session, bot_admin, url, username)
     else:
         post_id = await create_post_user(session, bot, **dict_post_params)
@@ -813,6 +812,8 @@ async def public_and_update_post(session, callback_query, state, data, post):
                                          date_expired=date_expired, date_public=date_public,
                                          url_message=url, method=method, url_message_main=url_main_theme,
                                          url_message_free=url_free_theme)
+        await PostRepository.increment_liquid_posts(session, {f'current_{method}': 1})
+        await SellerRepository.seller_add(session)
         await send_messages_for_admin(session, bot_admin, url, username)
     else:
         order = await OrderRepository.create_order(session, 1000, user_id, username, post.id)
@@ -894,7 +895,11 @@ async def handle_message(message: Message):
         topic_number = message.reply_to_message.message_id if message.reply_to_message else 0
         if topic_number == 12955 and message.photo:
             async for session in get_async_session():
+                await PostRepository.increment_liquid_posts(session, {'current_free': 1})
                 await SellerRepository.seller_add(session)
+                search_posts = await UserRepository.get_users_with_search(session)
+                url = f"https://t.me/Buyer_Marketplace/{topic_number}/{message.message_id}"
+                await notification(search_posts, message.caption, url, bot)
 
 
 async def get_channel_id_by_url(url: str) -> str:

@@ -64,7 +64,7 @@ async def public_keyboard():
     coins_post = [InlineKeyboardButton(text='Разместить пост за монеты',
                                        callback_data='add_post_coins')]
     # tokens_post = [InlineKeyboardButton(text='Разместить пост за токены',
-    #                                     callback_data='add_post_tokens')]
+    #                                     callback_data='add_post_token')]
     rub_post = [InlineKeyboardButton(text='Разместить пост за рубли',
                                      callback_data='add_post_money')]
     back_but = [InlineKeyboardButton(text='⬅️ В меню', callback_data='back_to_menu')]

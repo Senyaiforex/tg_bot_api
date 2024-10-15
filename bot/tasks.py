@@ -64,9 +64,16 @@ def check_posts():
 def check_tasks():
     asyncio.run(work_tasks())
 
+
 @app.task
 def check_sellers():
     asyncio.run(work_sellers())
+
+
+@app.task
+def check_and_clear_liquid():
+    asyncio.run(liquid_clear())
+
 
 @logger.catch
 async def work_tasks():
@@ -83,7 +90,15 @@ async def work_tasks():
 @logger.catch
 async def work_sellers():
     async for session in get_async_session():
+        sellers = await SellerRepository.get_count_sellers(session)
         await SellerRepository.sellers_clear(session)
+        await PostRepository.increment_liquid_posts(session, {'current_free': sellers})
+
+
+@logger.catch
+async def liquid_clear():
+    async for session in get_async_session():
+        await PostRepository.liquid_clear(session)
 
 
 @logger.catch
@@ -123,4 +138,8 @@ def setup_periodic_tasks(sender, **kwargs):
     sender.add_periodic_task(
             crontab(hour=0, minute=0),
             check_sellers.s(), name='clear_sellers-every-day'
+    )
+    sender.add_periodic_task(
+            crontab(hour=0, minute=0, day_of_month='1'),
+            check_and_clear_liquid.s(), name='monthly_task-every-1st'
     )

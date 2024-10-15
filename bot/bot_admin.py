@@ -181,17 +181,14 @@ async def liquid_info(message: Message, session, state: FSMContext) -> None:
     Функция, которая обрабатывает нажатие на кнопку 📔Ликвидность на публикации
     """
     await state.set_state(None)
-    today = datetime.today().date()
-    free, token, coins, money, stars = await PostRepository.get_count_posts_with_types(session,
-                                                                                       today,
-                                                                                       'month')
     liquid_posts = await PostRepository.get_liquid_posts(session)
     dict_info = {
             'need_free': liquid_posts.free_posts, 'need_coins': liquid_posts.coins_posts,
             'need_token': liquid_posts.token_posts, 'need_money': liquid_posts.money_posts,
             'need_stars': liquid_posts.stars_posts,
-            'current_free': free, 'current_coins': coins, 'current_token': token, 'current_money': money,
-            'current_stars': stars
+            'current_free': liquid_posts.current_free, 'current_coins': liquid_posts.current_coins,
+            'current_token': liquid_posts.current_token, 'current_money': liquid_posts.current_money,
+            'current_stars': liquid_posts.current_stars
     }
     text = txt_adm.text_liquid.format(**dict_info) + "\nВыберите тип ликвидности, которую хотите изменить"
 

@@ -149,100 +149,25 @@ class PostRepository:
         return list_count
 
     @classmethod
-    async def get_count_posts_with_types(cls, session: async_session,
-                                         date: date, type_date: str) -> list[int]:
+    async def get_count_posts_with_type(cls, session: async_session,
+                                         date: date, method: str) -> list[int]:
         """
         Метод для получения количества опубликованных постов по временному интервалу
         по типам публикации
         :param session: Асинхронная сессия
         :param date: Дата
-        :param type_date: Тип(за сегодня, за неделю, за месяц)
         :return: Количество постов
         :rtype: list[int
         """
-        # date_dict = {"today": date,
-        #              'week': date - timedelta(days=7),
-        #              'month': date - timedelta(days=30)}
-        # date_new = date_dict[type_date]
-        # count_free = await session.execute(
-        #         select(func.count(Post.id))
-        #         .where(
-        #                 and_(
-        #                         Post.date_public >= date_new,
-        #                         Post.method == 'free'
-        #                 )
-        #         ))
-        # count_coins = await session.execute(
-        #         select(func.count(Post.id))
-        #         .where(
-        #                 and_(
-        #                         Post.date_public >= date_new,
-        #                         Post.method == 'coins'
-        #                 )
-        #         ))
-        # count_token = await session.execute(
-        #         select(func.count(Post.id))
-        #         .where(
-        #                 and_(
-        #                         Post.date_public >= date_new,
-        #                         Post.method == 'token'
-        #                 )
-        #         ))
-        # count_money = await session.execute(
-        #         select(func.count(Post.id))
-        #         .where(
-        #                 and_(
-        #                         Post.date_public >= date_new,
-        #                         Post.method == 'money'
-        #                 )
-        #         ))
-        # count_stars = await session.execute(
-        #         select(func.count(Post.id))
-        #         .where(
-        #                 and_(
-        #                         Post.date_public >= date_new,
-        #                         Post.method == 'stars'
-        #                 )
-        #         ))
-        # counts_posts = [count_free.scalar(), count_token.scalar(),
-        #                 count_coins.scalar(), count_money.scalar(),
-        #                 count_stars.scalar()]
-        # Подготовка даты
-        date_dict = {
-                "today": date,
-                'week': date - timedelta(days=7),
-                'month': date - timedelta(days=30)
-        }
-        date_limit = date_dict[type_date]
-
-        # Запрос для подсчета всех типов постов
-        result = await session.execute(
-                select(
-                        func.count(case((Post.method == 'free', 1))).label('count_free'),
-                        func.count(case((Post.method == 'coins', 1))).label('count_coins'),
-                        func.count(case((Post.method == 'token', 1))).label('count_token'),
-                        func.count(case((Post.method == 'money', 1))).label('count_money'),
-                        func.count(case((Post.method == 'stars', 1))).label('count_stars')
-                ).where(Post.date_public >= date_limit)
-        )
-
-        # Извлечение результатов
-        counts = result.fetchone()
-
-        # Если результат None, возвращаем нули
-        if counts is None:
-            return [0, 0, 0, 0, 0]
-
-        # Подготовка списка результатов
-        counts_posts = [
-                counts.count_free or 0,
-                counts.count_coins or 0,
-                counts.count_token or 0,
-                counts.count_money or 0,
-                counts.count_stars or 0
-        ]
-
-        return counts_posts
+        count_for_method = await session.execute(
+                select(func.count(Post.id))
+                .where(
+                        and_(
+                                Post.date_public == date,
+                                Post.method == method
+                        )
+                ))
+        return count_for_method.scalar()
 
     @classmethod
     async def get_posts_by_celery(cls, session: async_session, today: date) -> int:
@@ -307,6 +232,41 @@ class PostRepository:
                 update(LiquidPosts).
                 where(LiquidPosts.id == 1).
                 values(**dict_param_liquid)
+        )
+        await session.execute(stmt)
+        await session.commit()
+
+    from sqlalchemy import update
+
+    @classmethod
+    async def increment_liquid_posts(cls, session: async_session, dict_param_liquid: dict[str, int]) -> None:
+        """
+        Увеличить параметры пула ликвидности для публикаций постов
+        :param session: Асинхронная сессия
+        :param dict_param_liquid: Параметры ликвидности для увеличения
+        :return: None
+        """
+        # Получаем текущий экземпляр
+        liquid_post = await session.get(LiquidPosts, 1)
+        for key, value in dict_param_liquid.items():
+            if hasattr(liquid_post, key):
+                setattr(liquid_post, key, getattr(liquid_post, key) + value)
+
+        # Сохраняем изменения
+        session.add(liquid_post)
+        await session.commit()
+
+    @classmethod
+    async def liquid_clear(cls, session):
+        """
+        Очистить пул ликвидности
+        :param session: Асинхронная сессия
+        :return: None
+        """
+        stmt = update(LiquidPosts).where(LiquidPosts.id == 1).values(
+                current_coins=0, current_token=0,
+                current_free=0, current_money=0,
+                current_stars=0
         )
         await session.execute(stmt)
         await session.commit()

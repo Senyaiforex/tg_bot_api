@@ -50,7 +50,7 @@ class LiquidData:
 liquid_const = LiquidData()
 
 
-async def create_data_posts(session: async_session, posts_count: list[int],
+async def create_data_posts(session: async_session,
                             today_count: int | None = None) -> list[dict[str: Any],]:
     """
     Функция для создания информации по количествам опубликованных постов
@@ -62,26 +62,30 @@ async def create_data_posts(session: async_session, posts_count: list[int],
     процентном соотношении %
     - current - Текущее количество публикаций
     - need - Требуемое количество публикаций
-    :param posts_count:
     :return:
     """
     liquid_instance = await PostRepository.get_liquid_posts(session)
     dict_type_posts = {
-            0: ('Посты бесплатно', liquid_instance.free_posts, 0),
-            1: ('Посты за токены', liquid_instance.token_posts, 750),
-            2: ('Посты за монеты', liquid_instance.coins_posts, 10000),
-            3: ('Посты за рубли', liquid_instance.money_posts, 1000),
-            4: ('Посты за звёзды', liquid_instance.stars_posts, 30)
+            0: ('Посты бесплатно', liquid_instance.free_posts,
+                liquid_instance.current_free, 0),
+            1: ('Посты за токены', liquid_instance.token_posts,
+                liquid_instance.current_token, 750),
+            2: ('Посты за монеты', liquid_instance.coins_posts,
+                liquid_instance.current_coins, 10000),
+            3: ('Посты за рубли', liquid_instance.money_posts,
+                liquid_instance.current_money, 1000),
+            4: ('Посты за звёзды', liquid_instance.stars_posts,
+                liquid_instance.current_stars, 30)
     }
     list_models = []
-    for index in range(len(posts_count)):
-        current_percent = min(int(posts_count[index] / dict_type_posts[index][1] * 100), 100)
+    for index in range(4):
+        current_percent = min(int(dict_type_posts[index][2] / dict_type_posts[index][1] * 100), 100)
         need_percent = max(100 - current_percent, 0)
         list_models.append({
                 "name": dict_type_posts[index][0],
-                "price": dict_type_posts[index][2] * posts_count[index],
+                "price": dict_type_posts[index][2] * dict_type_posts[index][3],
                 "data": [current_percent, need_percent],
-                "current": posts_count[index],
+                "current": dict_type_posts[index][2],
                 "need": dict_type_posts[index][1]
         })
     if today_count or today_count == 0:
@@ -120,6 +124,7 @@ dict_cat = {'task': 'Задания',
             "watch": "Видео",
             "games": "Игры",
             "bonus": "Бонусы"}
+
 
 async def create_data_tasks(task_validator: BaseModel,
                             category_validator: BaseModel,
@@ -194,10 +199,6 @@ async def create_data_liquid(session: async_session) -> dict[str: int | str]:
     :return: словарь с параметрами
     :rtype: dict
     """
-    today = datetime.today().date()
-    free, token, coins, money, stars = await PostRepository.get_count_posts_with_types(session,
-                                                                                       today,
-                                                                                       'month')
     liquid_instance = await PostRepository.get_liquid_posts(session)
     all_public_need = (liquid_instance.money_posts +  # сколько всего постов необходимо опубликовать
                        liquid_instance.token_posts +
@@ -209,8 +210,14 @@ async def create_data_liquid(session: async_session) -> dict[str: int | str]:
                         liquid_instance.coins_posts +
                         liquid_instance.stars_posts)
     free_public_need = liquid_instance.free_posts  # сколько бесплатных постов необходимо опубликовать
-    all_current = token + coins + money + free + stars  # сколько опубликовано сейчас всего постов
-    paid_current = token + coins + money + stars  # сколько опубликовано сейчас платных постов
+    all_current = sum(
+            getattr(liquid_instance, attr) for attr
+            in dir(liquid_instance) if attr.startswith("current")
+    )
+    paid_current = sum(
+            getattr(liquid_instance, attr) for attr
+            in dir(liquid_instance) if attr.startswith("current") and 'free' not in attr
+    )
     data_liquid_posts = {
             'all_posts': {
                     'need': all_public_need,
@@ -222,8 +229,8 @@ async def create_data_liquid(session: async_session) -> dict[str: int | str]:
                     'percent': await calculate_percent(paid_current, paid_public_need)},
             'free_posts': {
                     'need': free_public_need,
-                    'current': free,
-                    'percent': await calculate_percent(free, free_public_need)}
+                    'current': liquid_instance.current_free,
+                    'percent': await calculate_percent(liquid_instance.current_free, free_public_need)}
     }
     return data_liquid_posts
 

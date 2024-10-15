@@ -280,9 +280,8 @@ async def get_count_posts_by_type(session=Depends(get_async_session)):
     """
 
     date_today = datetime.today().date()
-    posts_count = await PostRepository.get_count_posts_with_types(session, date_today, 'month')
     posts_today_count = await PostRepository.get_count_post_by_time(session, date_today)
-    data = await create_data_posts(session, posts_count, posts_today_count[0])
+    data = await create_data_posts(session, posts_today_count[0])
 
     return [PostsByType(**inst) for inst in data]
 

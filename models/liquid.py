@@ -13,3 +13,8 @@ class LiquidPosts(Base):
     money_posts = Column(Integer, default=0)
     token_posts = Column(Integer, default=0)
     stars_posts = Column(Integer, default=0)
+    current_free = Column(Integer, default=0)
+    current_coins = Column(Integer, default=0)
+    current_money = Column(Integer, default=0)
+    current_stars = Column(Integer, default=0)
+    current_token = Column(Integer, default=0)
