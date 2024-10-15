@@ -90,9 +90,7 @@ async def work_tasks():
 @logger.catch
 async def work_sellers():
     async for session in get_async_session():
-        sellers = await SellerRepository.get_count_sellers(session)
         await SellerRepository.sellers_clear(session)
-        await PostRepository.increment_liquid_posts(session, {'current_free': sellers})
 
 
 @logger.catch

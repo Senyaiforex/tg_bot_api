@@ -8,10 +8,9 @@ from .messages import send_message
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from models import User, friends, Post, Pull
-from repository import UserRepository, PostRepository, TaskRepository, PullRepository
+from repository import UserRepository, PostRepository, TaskRepository, PullRepository, SellerRepository
 from fastapi import HTTPException
 from .text_static import *
-
 
 CHANNEL_ID = os.getenv("CHANNEL_ID")
 
@@ -274,12 +273,17 @@ async def create_statistic_message(session: AsyncSession, bot: Bot) -> str:
     count_members = await bot.get_chat_member_count(CHANNEL_ID)
     date = datetime.today().date()
     count_tasks = await TaskRepository.get_count_tasks(session, date)
+    liquid_instance = await PostRepository.get_liquid_posts(session)
+    count_month = sum(
+            getattr(liquid_instance, attr) for attr
+            in dir(liquid_instance) if attr.startswith("current")
+    )
     count_posts = await PostRepository.get_count_post_by_time(session, date)
+    sellers = await SellerRepository.get_count_sellers(session)
     text = txt_adm.post_statistic.format(
             count_sbs=count_members,
-            posts_month=count_posts[2],
-            posts_week=count_posts[1],
-            posts_today=count_posts[0],
+            posts_month=count_month,
+            posts_today=count_posts[0] + sellers,
             count_tasks=count_tasks
     )
     return text
