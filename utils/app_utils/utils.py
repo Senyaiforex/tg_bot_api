@@ -78,7 +78,7 @@ async def create_data_posts(session: async_session,
                 liquid_instance.current_stars, 30)
     }
     list_models = []
-    for index in range(4):
+    for index in range(5):
         current_percent = min(int(dict_type_posts[index][2] / dict_type_posts[index][1] * 100), 100)
         need_percent = max(100 - current_percent, 0)
         list_models.append({
