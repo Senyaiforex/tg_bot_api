@@ -920,7 +920,7 @@ async def check_task_complete(telegram_id: int, task_id: int) -> bool:
         task = await TaskRepository.get_task_by_id(task_id, session)
         if task in user.tasks:
             return True
-        if task.category_id == 1:
+        if task.category_id == 2:
             if await is_user_subscribed(telegram_id, await get_channel_id_by_url(task.url)):
                 await TaskRepository.add_task(user, task, session)
                 await PullRepository.update_pull(session, 5000, 'current_tasks')

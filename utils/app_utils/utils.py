@@ -152,12 +152,16 @@ async def create_data_tasks(task_validator: BaseModel,
                 tasks_not_completed.append(task_validator(id=task.id, description=task.description, url=task.url))
             else:
                 completed_tasks.append(task_validator(id=task.id, description=task.description, url=task.url))
+                user.tasks.remove(task)
 
         categories_output.append(category_validator(
                 id=category.id,
                 name=dict_cat[category.name],
                 tasks=tasks_not_completed
         ))
+    else:
+        for task in user.tasks:
+            completed_tasks.append(task_validator(id=task.id, description=task.description, url=task.url))
     categories_output.append(category_validator(
             id=6,
             name='Завершённые',
