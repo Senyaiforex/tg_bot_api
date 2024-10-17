@@ -37,6 +37,7 @@ logger.add("logs/logs_bot/log_file.log",
 async def get_async_session() -> async_session:
     async with async_session() as session:
         yield session
+        await session.close()
 
 
 os.makedirs(MEDIA_DIR, exist_ok=True)

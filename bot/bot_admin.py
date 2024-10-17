@@ -24,6 +24,7 @@ from utils.bot_utils.util import get_info_from_user, create_text_transactions, g
 async def get_async_session() -> async_session:
     async with async_session() as session:
         yield session
+        await session.close()
 
 
 logger.add("logs/logs_admin/log_file.log",

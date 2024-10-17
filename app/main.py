@@ -89,6 +89,7 @@ app.add_middleware(
 async def get_async_session() -> async_session:
     async with async_session() as session:
         yield session
+        await session.close()
 
 
 @app.get("/api/get_user_info/{id_telegram}", response_model=UserOut)

@@ -32,6 +32,7 @@ logger.add("logs/web_server/log_file.log",
 async def get_async_session() -> async_session:
     async with async_session() as session:
         yield session
+        await session.close()
 
 
 async def send_message(chat_id, text, url=None):

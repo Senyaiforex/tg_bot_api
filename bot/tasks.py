@@ -34,6 +34,7 @@ loop = asyncio.get_event_loop()
 async def get_async_session() -> async_session:
     async with async_session() as session:
         yield session
+        await session.close()
 
 
 async def delete_message(bot_instance, chat_id, id_message) -> None:
