@@ -90,7 +90,7 @@ async def get_async_session() -> async_session:
     async with async_session() as session:
         logger.info("SESSION OPEN")
         yield session
-        logger.INFO("SESSION CLOSED")
+        logger.info("SESSION CLOSED")
         await session.close()
 
 
