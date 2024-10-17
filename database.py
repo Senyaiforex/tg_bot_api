@@ -13,6 +13,7 @@ db_host = os.getenv("POSTGRES_HOST") if DOCKER else '127.0.0.1'
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATABASE_URL = f'postgresql+asyncpg://{user}:{password}@{db_host}:5432/{db_name}'
 engine = create_async_engine(DATABASE_URL,
+                             pool_recycle=700,
                              pool_size=100,  # производительность
                              max_overflow=0,  # производительность
                              connect_args={"timeout": 20},
