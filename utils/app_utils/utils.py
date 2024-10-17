@@ -142,26 +142,23 @@ async def create_data_tasks(task_validator: BaseModel,
     categories = await TaskRepository.get_categories_with_tasks(session)
     user = await UserRepository.get_user_with_tasks(telegram_id, session)
     user_tasks_ids = {task.id for task in user.tasks} if user else set()
+    date_today = datetime.today().date()
     categories_output = []
     completed_tasks = []
     for category in categories:
         # Фильтр задач
         tasks_not_completed = []
         for task in category.tasks:
-            if task.id not in user_tasks_ids:
+            if task.id not in user_tasks_ids and date_today >= task.date_limit:
                 tasks_not_completed.append(task_validator(id=task.id, description=task.description, url=task.url))
             else:
                 completed_tasks.append(task_validator(id=task.id, description=task.description, url=task.url))
-                user.tasks.remove(task)
 
         categories_output.append(category_validator(
                 id=category.id,
                 name=dict_cat[category.name],
                 tasks=tasks_not_completed
         ))
-    else:
-        for task in user.tasks:
-            completed_tasks.append(task_validator(id=task.id, description=task.description, url=task.url))
     categories_output.append(category_validator(
             id=6,
             name='Завершённые',

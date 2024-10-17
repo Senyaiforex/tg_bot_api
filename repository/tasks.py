@@ -93,12 +93,9 @@ class TaskRepository:
         :return: список категорий
         :rtype: list[CategoryTask]
         """
-        date_today = datetime.today().date()
         result = await session.execute(
                 select(CategoryTask)
                 .options(selectinload(CategoryTask.tasks))
-                .join(CategoryTask.tasks)
-                .where(Task.date_limit <= date_today)
         )
         categories = result.scalars().unique().all()
         return categories
