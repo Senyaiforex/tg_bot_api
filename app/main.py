@@ -88,9 +88,7 @@ app.add_middleware(
 
 async def get_async_session() -> async_session:
     async with async_session() as session:
-        logger.info("SESSION OPEN")
         yield session
-        logger.info("SESSION CLOSED")
         await session.close()
 
 
@@ -104,7 +102,6 @@ async def get_user(id_telegram: Annotated[int, Path(description="Telegram ID п�
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий информацию о пользователе.\n
     """
-    logger.info(session)
     user = await UserRepository.get_user_by_telegram_id(id_telegram, session)
     return user
 
@@ -262,7 +259,6 @@ async def get_count_members(session=Depends(get_async_session)):
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий количество продавцов sellers и покупателей buyers
     """
-    logger.info(session)
     sellers = await SellerRepository.get_count_sellers(session)
     async with aiohttp.ClientSession() as session:
         response = await session.get('http://telegram_bot:8443/count_subscribed')
@@ -283,7 +279,6 @@ async def get_count_posts_by_type(session=Depends(get_async_session)):
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий количество опубликованных постов
     """
-    logger.info(session)
     date_today = datetime.today().date()
     posts_today_count = await PostRepository.get_count_post_by_time(session, date_today)
     data = await create_data_posts(session, posts_today_count[0])
