@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 # from aiogram.utils.text_decorations import
 
 async def reply_keyboard():
-    menu = [KeyboardButton(text="Меню")]
+    menu = [KeyboardButton(text="⬅️ Назад")]
     keyboard = ReplyKeyboardMarkup(keyboard=[
             menu,
     ], resize_keyboard=True, is_persistent=True, one_time_keyboard=False)

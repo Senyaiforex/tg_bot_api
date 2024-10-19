@@ -125,7 +125,7 @@ async def menu_liquid_confirm() -> InlineKeyboardMarkup:
     return keyboard
 
 
-back_button = [KeyboardButton(text="В меню")]
+back_button = [KeyboardButton(text="⬅️ Назад")]
 back_keyboard = ReplyKeyboardMarkup(resize_keyboard=True,
                                     is_persistent=True,
                                     one_time_keyboard=False,
@@ -143,7 +143,7 @@ async def type_pulls_keyboard() -> InlineKeyboardMarkup:
             [InlineKeyboardButton(text='Пул на фарминг', callback_data='pull_farming')],
             [InlineKeyboardButton(text='Пул на краудсорсинг', callback_data='pull_plan')],
             [InlineKeyboardButton(text='Пул на задания', callback_data='pull_tasks')],
-            [InlineKeyboardButton(text='В меню', callback_data='menu')]
+            [InlineKeyboardButton(text='⬅️ Назад', callback_data='menu')]
     ]
     keyboard = InlineKeyboardMarkup(
             inline_keyboard=menu_inline_buttons,
@@ -163,7 +163,7 @@ async def type_liquid_keyboard() -> InlineKeyboardMarkup:
             [InlineKeyboardButton(text='Посты за рубли', callback_data='liquid_money')],
             [InlineKeyboardButton(text='Посты за токены', callback_data='liquid_token')],
             [InlineKeyboardButton(text='Посты за звёзды', callback_data='liquid_stars')],
-            [InlineKeyboardButton(text='В меню', callback_data='menu')]
+            [InlineKeyboardButton(text='⬅️ Назад', callback_data='menu')]
     ]
     keyboard = InlineKeyboardMarkup(
             inline_keyboard=menu_inline_buttons,

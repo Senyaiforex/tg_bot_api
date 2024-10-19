@@ -132,7 +132,7 @@ async def start(message: Message, command: CommandObject, state: FSMContext) -> 
             await UserRepository.create_user_tg(user_id, username, session)
 
 
-@dp.message(F.text == "В меню")
+@dp.message(F.text == "⬅️ Назад")
 @subscribed
 async def back_to_main(message: Message, state: FSMContext) -> None:
     await state.set_state(None)
@@ -141,7 +141,7 @@ async def back_to_main(message: Message, state: FSMContext) -> None:
     await process_menu_message(picture, keyboard, bot, message, state)
 
 
-@dp.message(F.text == 'Меню')
+@dp.message(F.text == '⬅️ Назад')
 @subscribed
 async def menu(message: Message, state: FSMContext) -> None:
     """

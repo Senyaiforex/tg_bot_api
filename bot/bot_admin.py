@@ -102,7 +102,7 @@ async def inline_buttons_menu(message: Message, session, state: FSMContext) -> N
     await message_answer_process(bot, message, state, text, keyboard, False)
 
 
-@dp.message(F.text == "В меню")
+@dp.message(F.text == "⬅️ Назад")
 @logger.catch
 async def back_to_main(message: Message, state: FSMContext) -> None:
     await state.set_state(state=None)  # Завершаем текущее состояние

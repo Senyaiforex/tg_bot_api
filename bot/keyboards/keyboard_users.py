@@ -7,7 +7,7 @@ manager_tg = 'https://t.me/Broker_113'
 
 
 async def start_reply_keyboard():
-    menu = [KeyboardButton(text="Меню")]
+    menu = [KeyboardButton(text="⬅️ Назад")]
     keyboard = ReplyKeyboardMarkup(keyboard=[
             menu
     ], resize_keyboard=True, is_persistent=True, one_time_keyboard=False)
@@ -48,7 +48,7 @@ async def catalog_keyboard():
             inline_keyboard=[[InlineKeyboardButton(text=elem[0],
                                                    url=elem[1])] for elem in catalog_list])
     keyboard.inline_keyboard.append(
-            [InlineKeyboardButton(text='⬅️ В меню', callback_data='back_to_menu')]
+            [InlineKeyboardButton(text='⬅️ Назад', callback_data='back_to_menu')]
 
     )
     return keyboard
@@ -67,7 +67,7 @@ async def public_keyboard():
     #                                     callback_data='add_post_token')]
     rub_post = [InlineKeyboardButton(text='Разместить пост за рубли',
                                      callback_data='add_post_money')]
-    back_but = [InlineKeyboardButton(text='⬅️ В меню', callback_data='back_to_menu')]
+    back_but = [InlineKeyboardButton(text='⬅️ Назад', callback_data='back_to_menu')]
     keyboard_inline = [
             free_post,
             coins_post,
@@ -117,7 +117,7 @@ async def search_keyboard():
     list_search = [InlineKeyboardButton(text='📋Список товаров в листе ожидания',
                                         callback_data='list_search')]
     add_product = [InlineKeyboardButton(text='➕Добавить товар в лист ожидания', callback_data='search')]
-    back_menu = [InlineKeyboardButton(text='Назад в меню',
+    back_menu = [InlineKeyboardButton(text='⬅️ Назад',
                                             callback_data=f'back_to_menu')]
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
             list_search,
@@ -129,7 +129,7 @@ async def search_keyboard():
 
 async def delete_search_keyboard(id_search):
     button = [InlineKeyboardButton(text='Удалить', callback_data=f'del_search_{id_search}')]
-    search_menu = [InlineKeyboardButton(text='Назад в меню',
+    search_menu = [InlineKeyboardButton(text='⬅️ Назад',
                                             callback_data=f'back_to_menu')]
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
             button,
@@ -148,7 +148,7 @@ async def post_keyboard(post_id, active: bool) -> InlineKeyboardMarkup:
         buttons = [post_deactivate, post_delete]
     else:
         buttons = [post_public, post_delete]
-    post_menu = [InlineKeyboardButton(text='Назад в меню',
+    post_menu = [InlineKeyboardButton(text='⬅️ Назад',
                                             callback_data=f'back_to_menu')]
     buttons.append(post_menu)
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
@@ -168,7 +168,7 @@ async def my_post_public_keyboard(id_post: int):
     #                                     callback_data='add_post_tokens')]
     rub_post = [InlineKeyboardButton(text='Опубликовать за рубли',
                                      callback_data=f'again_money_{id_post}')]
-    back_but = [InlineKeyboardButton(text='⬅️ В меню', callback_data='back_to_menu')]
+    back_but = [InlineKeyboardButton(text='⬅️ Назад', callback_data='back_to_menu')]
     keyboard_inline = [
             free_post,
             coins_post,
@@ -181,7 +181,7 @@ async def my_post_public_keyboard(id_post: int):
 
 
 async def username_keyboard(username: str) -> ReplyKeyboardMarkup:
-    back_button = [KeyboardButton(text="В меню")]
+    back_button = [KeyboardButton(text="⬅️ Назад")]
     name_insert_button = [KeyboardButton(text=username)]
     keyboard = ReplyKeyboardMarkup(keyboard=[
             name_insert_button,
@@ -192,7 +192,7 @@ async def username_keyboard(username: str) -> ReplyKeyboardMarkup:
 
 async def search_keyboard_delete() -> InlineKeyboardMarkup:
     menu_button = [InlineKeyboardButton(text="В меню", callback_data="back_to_menu")]
-    back_button = [InlineKeyboardButton(text="Назад", callback_data="products_search")]
+    back_button = [InlineKeyboardButton(text="⬅️ Назад", callback_data="products_search")]
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
             back_button,
             menu_button
@@ -202,7 +202,7 @@ async def search_keyboard_delete() -> InlineKeyboardMarkup:
 
 async def delete_message_keyboard(id_message):
     button_delete = [InlineKeyboardButton(text="Да", callback_data=f"message_del_{id_message}")]
-    menu_button = [InlineKeyboardButton(text="В меню", callback_data="back_to_menu")]
+    menu_button = [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_menu")]
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
             button_delete,
             menu_button
@@ -210,7 +210,7 @@ async def delete_message_keyboard(id_message):
     return keyboard
 
 
-menu_button = [InlineKeyboardButton(text="В меню", callback_data="back_to_menu")]
+menu_button = [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_menu")]
 back_menu_user = InlineKeyboardMarkup(inline_keyboard=[
         menu_button
 ])
