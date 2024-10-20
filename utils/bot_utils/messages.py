@@ -44,6 +44,24 @@ async def delete_list_messages(data, bot, user_id):
             await delete_message(bot, user_id, id_post_message)
 
 
+async def delete_menu(state: FSMContext, bot: Bot, user_id: int) -> None:
+    """
+    Функция, в которой происходит удаление сообщений меню
+    :param state:
+    :param bot:
+    :param user_id:
+    :return:
+    """
+    data = await state.get_data()
+    menu_sel = data.get('menu_sellers')
+    menu_buy = data.get('menu_buyers')
+    if menu_sel:
+        await delete_message(bot, user_id, menu_sel)
+    if menu_buy:
+        await delete_message(bot, user_id, menu_buy)
+    await state.update_data(menu_sellers=None, menu_buyers=None)
+
+
 async def process_menu_message(picture: FSInputFile,
                                keyboard: InlineKeyboardMarkup | None,
                                bot: Bot,

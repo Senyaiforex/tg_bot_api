@@ -8,6 +8,9 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 import functools
+
+from dill.temp import capture
+
 from bot_admin import bot as bot_admin
 from payment import get_url_payment
 from keyboards import *
@@ -17,7 +20,7 @@ import subprocess
 from loguru import logger
 from states import PostStates, DeletePost
 from utils.bot_utils.messages import process_menu_message, message_answer_process, delete_message, reply_keyboard, \
-    send_messages_for_admin
+    send_messages_for_admin, delete_menu, delete_list_messages
 from utils.bot_utils.util import *
 
 MEDIA_DIR = 'media'
@@ -103,11 +106,13 @@ async def start(message: Message, command: CommandObject, state: FSMContext) -> 
     """
     Функция обработки команды /start, для начала работы с ботом
     """
-    picture = FSInputFile('static/menu_pic.jpg')
+    picture_sellers = FSInputFile('static/seller_menu.jpg')
+    picture_buyers = FSInputFile('static/buyer_menu.jpg')
     user_id = message.from_user.id
     username = message.from_user.username
     inviter_id = None
     args = command.args
+    await state.clear()
     if args and args.startswith("invited_by_"):
         inviter_id = int(args.split("_")[2])
     elif args and args.startswith("products_search"):
@@ -116,13 +121,18 @@ async def start(message: Message, command: CommandObject, state: FSMContext) -> 
         return
     if await is_user_subscribed(user_id, CHANNEL_ID):
         # Если пользователь подписан, показываем меню
-        keyboard_reply = await menu_keyboard()
-        await bot.send_photo(user_id, photo=picture, parse_mode='Markdown',
-                             reply_markup=keyboard_reply)
+        keyboard_sellers = await menu_sellers_keyboard()
+        keyboard_buyers = await menu_buyers_keyboard()
+        menu_sel = await bot.send_photo(user_id, photo=picture_sellers,
+                                        reply_markup=keyboard_sellers)
+        menu_buy = await bot.send_photo(user_id, photo=picture_buyers,
+                                        reply_markup=keyboard_buyers)
+        await state.update_data(menu_sellers=menu_sel.message_id,
+                                menu_buyers=menu_buy.message_id)
     else:
         keyboard = await start_keyboard()
-        await bot.send_photo(chat_id=user_id, photo=picture,
-                             caption=txt_us.no_subscribe, reply_markup=keyboard)
+        await bot.send_message(chat_id=user_id,
+                               text=txt_us.no_subscribe, reply_markup=keyboard)
     async for session in get_async_session():
         if await get_user_bot(user_id, session):
             return  # Если пользователь уже есть в базе, выходим из функции
@@ -132,26 +142,40 @@ async def start(message: Message, command: CommandObject, state: FSMContext) -> 
             await UserRepository.create_user_tg(user_id, username, session)
 
 
+
 @dp.message(F.text == "⬅️ Назад")
 @subscribed
 async def back_to_main(message: Message, state: FSMContext) -> None:
-    await state.set_state(None)
-    picture = FSInputFile('static/menu_pic.jpg')
-    keyboard = await menu_keyboard()
-    await process_menu_message(picture, keyboard, bot, message, state)
+    data = await state.get_data()
+    user_id = message.from_user.id
+    picture_sellers = FSInputFile('static/seller_menu.jpg')
+    picture_buyers = FSInputFile('static/buyer_menu.jpg')
+    keyboard_sellers = await menu_sellers_keyboard()
+    keyboard_buyers = await menu_buyers_keyboard()
+    previous_message_id = data.get('last_bot_message')
+    if previous_message_id:
+        await delete_message(bot, user_id, previous_message_id)
+    await delete_list_messages(data, bot, user_id)
+    await state.clear()
+    menu_sel = await bot.send_photo(user_id, photo=picture_sellers,
+                                    reply_markup=keyboard_sellers)
+    menu_buy = await bot.send_photo(user_id, photo=picture_buyers,
+                                    reply_markup=keyboard_buyers)
+    await state.update_data(menu_sellers=menu_sel.message_id,
+                            menu_buyers=menu_buy.message_id)
+    await message.delete()
 
 
-@dp.message(F.text == '⬅️ Назад')
-@subscribed
-async def menu(message: Message, state: FSMContext) -> None:
-    """
-    Функция обработки нажатия на кнопку «Меню»
-    """
-    await state.set_state(None)
-    picture = FSInputFile('static/menu_pic.jpg')
-    keyboard = await menu_keyboard()
-    await process_menu_message(picture, keyboard, bot, message, state)
-
+# @dp.message(F.text == '⬅️ Назад')
+# @subscribed
+# async def menu(message: Message, state: FSMContext) -> None:
+#     """
+#     Функция обработки нажатия на кнопку «Меню»
+#     """
+#     await state.set_state(None)
+#     picture = FSInputFile('static/menu_pic.jpg')
+#     keyboard = await menu_keyboard()
+#     await process_menu_message(picture, keyboard, bot, message, state)
 
 # @dp.message(F.text == 'Опубликовать пост')
 # @subscribed
@@ -163,8 +187,8 @@ async def menu(message: Message, state: FSMContext) -> None:
 #     picture = FSInputFile('static/public_pic.jpg')
 #     keyboard = await public_keyboard()
 #     await process_menu_message(picture, keyboard, bot, message, state)
-#
-#
+
+
 # @dp.message(F.text == 'Каталог')
 # @subscribed
 # async def catalog(message: Message, state: FSMContext) -> None:
@@ -183,10 +207,27 @@ async def back_to_menu(callback_query: CallbackQuery, state: FSMContext) -> None
     """
     Функция обработки нажатия на inline-кнопку «В меню»
     """
-    await state.set_state(None)
-    picture = FSInputFile('static/menu_pic.jpg')
-    keyboard = await menu_keyboard()
-    await process_menu_message(picture, keyboard, bot, callback_query, state)
+    data = await state.get_data()
+    user_id = callback_query.from_user.id
+    await delete_list_messages(data, bot, user_id)
+    picture_sellers = FSInputFile('static/seller_menu.jpg')
+    picture_buyers = FSInputFile('static/buyer_menu.jpg')
+    keyboard_sellers = await menu_sellers_keyboard()
+    keyboard_buyers = await menu_buyers_keyboard()
+    previous_message_id = data.get('last_bot_message')
+    if previous_message_id:
+        await delete_message(bot, user_id, previous_message_id)
+
+    menu_sel = await callback_query.message.answer_photo(photo=picture_sellers, caption='',
+                                                         reply_markup=keyboard_sellers)
+    menu_buy = await callback_query.message.answer_photo(photo=picture_buyers, caption='',
+                                                         reply_markup=keyboard_buyers)
+    try:
+        await callback_query.message.delete()
+    except TelegramBadRequest as ex:
+        pass
+    await state.clear()
+    await state.update_data(menu_sellers=menu_sel.message_id, menu_buyers=menu_buy.message_id)
 
 
 @dp.callback_query(lambda c: c.data == 'public')
@@ -195,21 +236,25 @@ async def add_post_query(callback_query: CallbackQuery, state: FSMContext) -> No
     """
     Функция обработки нажатия на inline-кнопку «Опубликовать пост»
     """
-    picture = FSInputFile('static/public_pic.jpg')
+    picture = FSInputFile('static/seller_menu.jpg')
     keyboard = await public_keyboard()
+    await delete_menu(state, bot, callback_query.from_user.id)
+
     await process_menu_message(picture, keyboard, bot,
                                callback_query, state,
                                txt_us.cooperation)
 
 
 @dp.callback_query(lambda c: c.data == 'delete_post_by_name')
-async def add_post_query(callback_query: CallbackQuery, state: FSMContext) -> None:
+async def delete_post_by_name(callback_query: CallbackQuery, state: FSMContext) -> None:
     """
-    Функция обработки нажатия на inline-кнопку «Опубликовать пост»
+    Функция обработки нажатия на inline-кнопку «Удалить мой пост»
     """
+    await delete_menu(state, bot, callback_query.from_user.id)
     await message_answer_process(bot, callback_query,
                                  state, "Отправьте ссылку на сообщение в группе с упоминанием вашего никнейма\n"
-                                        "Если такое сообщение есть, то мы удалим его")
+                                        "Если такое сообщение есть, то мы удалим его",
+                                 back_menu_user)
     await state.set_state(DeletePost.wait_url_post)
 
 
@@ -219,11 +264,12 @@ async def catalog_query(callback_query: CallbackQuery, state: FSMContext) -> Non
     """
     Функция обработки нажатия на inline-кнопку «Каталог товаров»
     """
-    picture = FSInputFile('static/catalog_pic.jpg')
+    picture = FSInputFile('static/buyer_menu.jpg')
+    await delete_menu(state, bot, callback_query.from_user.id)
     keyboard = await catalog_keyboard()
     await process_menu_message(picture, keyboard, bot,
                                callback_query, state,
-                               txt_us.cooperation)
+                               '')
 
 
 @dp.callback_query(lambda c: c.data == 'search')
@@ -242,7 +288,7 @@ async def search_query(callback_query: CallbackQuery, state: FSMContext) -> None
             return
         else:
             await message_answer_process(bot, callback_query,
-                                         state, txt_us.search, back_keyboard)
+                                         state, txt_us.search, back_menu_user)
             await state.set_state(PostStates.wait_product_search)
 
 
@@ -252,6 +298,7 @@ async def search_products(callback_query: CallbackQuery, state: FSMContext) -> N
     """
     Функция обработки нажатия на inline-кнопку «🔍Лист ожидания»
     """
+    await delete_menu(state, bot, callback_query.from_user.id)
     await message_answer_process(bot, callback_query,
                                  state, txt_us.info_search, keyboard=await search_keyboard())
 
@@ -264,6 +311,7 @@ async def list_search(callback_query: CallbackQuery, state: FSMContext) -> None:
     Функция обработки нажатия на inline-кнопку «📋Список товаров в листе ожидания»
     """
     list_data = []
+    await callback_query.answer()
     async for session in get_async_session():
         list_search = await SearchListRepository.get_search_by_user(session, callback_query.from_user.id)
         if len(list_search) == 0:
@@ -287,7 +335,7 @@ async def del_search(callback_query: CallbackQuery, state: FSMContext) -> None:
     id_search = int(callback_query.data.split('_')[2])
     async for session in get_async_session():
         await SearchListRepository.search_delete(session, id_search)
-        await callback_query.message.edit_text(text='Товар удалён')
+        await callback_query.message.edit_text(text='Товар удалён', reply_markup=back_menu_user)
 
 
 @dp.callback_query(lambda c: c.data.startswith('message_del_'))
@@ -299,7 +347,8 @@ async def del_search(callback_query: CallbackQuery, state: FSMContext) -> None:
     await delete_message(bot, -1002090610085, int(message_id))
     await message_answer_process(bot, callback_query, state,
                                  "Ваше сообщение удалено",
-                                 back_keyboard)
+                                 back_menu_user)
+
 
 @dp.callback_query(lambda c: c.data.startswith('add_post'))
 @subscribed_call
@@ -317,12 +366,12 @@ async def add_post(callback_query: CallbackQuery, state: FSMContext) -> None:
                 await message_answer_process(bot, callback_query, state,
                                              "Вы достигли лимита бесплатных постов - 10.\n"
                                              "Теперь Вам недоступен этот способ публикации",
-                                             back_keyboard)
+                                             back_menu_user)
                 return
     await state.update_data(method=method)
     text = dict_text[method]
     await message_answer_process(bot, callback_query,
-                                 state, text, back_keyboard)
+                                 state, text, back_menu_user)
     await state.set_state(PostStates.wait_name)
 
 
@@ -333,14 +382,16 @@ async def post_list(callback_query: CallbackQuery, state: FSMContext) -> None:
     """
     Функция обработки нажатия на inline-кнопку «📋Мои объявления»
     """
+    await delete_menu(state, bot, callback_query.from_user.id)
     list_data = []
     async for session in get_async_session():
         posts = await PostRepository.get_posts_by_user(session, callback_query.from_user.id)
         if len(posts) == 0:
             await message_answer_process(bot, callback_query,
-                                         state, 'У вас нет постов и публикаций', back_keyboard)
+                                         state, 'У вас нет постов и публикаций', back_menu_user)
             return
         for post in posts:
+            await callback_query.answer()
             text = await create_text_by_post(post)
             try:
                 file_path = os.path.join(os.getcwd(), MEDIA_DIR, post.photo)
@@ -408,8 +459,7 @@ async def deactivate_post(callback_query: CallbackQuery, state: FSMContext) -> N
             if id_free_message != id_message:
                 await delete_message(bot, chat_id, id_free_message)
         await PostRepository.update_post(session, id_post, active=False)
-        await message_answer_process(bot, callback_query, state, "Пост снят с публикации",
-                                     await reply_keyboard())
+        await message_answer_process(bot, callback_query, state, "Пост снят с публикации", back_menu_user)
 
 
 @dp.callback_query(lambda c: c.data.startswith('public_again'))
@@ -435,15 +485,15 @@ async def process_product_name(message: Message, state: FSMContext) -> None:
         if contains_emoji(message.text) or not 3 <= len(message.text) <= 75:
             await message_answer_process(bot, message, state,
                                          'Неправильный формат названия товара\n'
-                                         'Попробуйте ещё раз', back_keyboard)
+                                         'Попробуйте ещё раз', back_menu_user)
             return
         try:
             await message_answer_process(bot, message, state, txt_us.positive.format(name=message.text),
-                                         back_keyboard)
+                                         back_menu_user)
         except TelegramBadRequest as ex:
             await message_answer_process(bot, message, state,
                                          'Неправильный формат названия товара\n'
-                                         'Попробуйте ещё раз', back_keyboard)
+                                         'Попробуйте ещё раз', back_menu_user)
         else:
             await SearchListRepository.create_search(session, user_id, message.text)
             await state.clear()
@@ -474,7 +524,7 @@ async def process_product_name(message: Message, state: FSMContext) -> None:
             await state.update_data(product_name=name)
             await state.set_state(PostStates.wait_photo)
     finally:
-        await message_answer_process(bot, message, state, dict_valid[is_valid], back_keyboard)
+        await message_answer_process(bot, message, state, dict_valid[is_valid], back_menu_user)
 
 
 async def save_file(bot: Bot, photo, state: FSMContext):
@@ -507,7 +557,7 @@ async def wait_url_post(message: Message, state: FSMContext) -> None:
     if 'http' not in url:
         await message_answer_process(bot, message, state,
                                      "Неправильный формат ссылки, попробуйте ещё раз",
-                                     None)
+                                     back_menu_user)
         return
     async for session in get_async_session():
         post = await PostRepository.get_post_by_url(session, url)
@@ -531,13 +581,13 @@ async def wait_url_post(message: Message, state: FSMContext) -> None:
                     await delete_message(bot, chat_id, id_free_message)
                 await message_answer_process(bot, message, state,
                                              "Пост удалён",
-                                             None)
+                                             back_menu_user)
                 await state.set_state(None)
                 return
         elif post:
             await message_answer_process(bot, message, state,
                                          "Вы не можете удалить этот пост, так как он опубликован не Вами",
-                                         None)
+                                         back_menu_user)
             await state.set_state(None)
             return
     try:
@@ -549,15 +599,14 @@ async def wait_url_post(message: Message, state: FSMContext) -> None:
         await message_answer_process(bot, message, state,
                                      "Ваше сообщение не найдено или Вы отправили нам неправильный"
                                      "формат ссылки",
-                                     None)
+                                     back_menu_user)
     else:
         if username not in msg.caption:
-            await asyncio.sleep(1)
             await delete_message(bot, message.from_user.id, msg.message_id)
             await message_answer_process(bot, message, state,
                                          "Вы не можете удалить это сообщение, так как в нём нет"
                                          "упоминания Вашего никнейма!",
-                                         None)
+                                         back_menu_user)
         else:
             await asyncio.sleep(1)
             await delete_message(bot, message.from_user.id, msg.message_id)
@@ -579,7 +628,7 @@ async def process_product_photo(message: Message, state: FSMContext) -> None:
     dict_text = {True: txt_us.save_photo.format(product_name=product_name),
                  False: txt_us.photo_cancell}
     text = dict_text[save]
-    await message_answer_process(bot, message, state, text, back_keyboard)
+    await message_answer_process(bot, message, state, text, back_menu_user)
     if save:
         await state.set_state(PostStates.wait_price)
 
@@ -589,7 +638,7 @@ async def process_invalid_photo(message: Message, state: FSMContext) -> None:
     """
     Функция обработки отправки фотографии товара
     """
-    await message_answer_process(bot, message, state, txt_us.photo_error, back_keyboard)
+    await message_answer_process(bot, message, state, txt_us.photo_error, back_menu_user)
 
 
 @dp.message(PostStates.wait_price)
@@ -606,7 +655,7 @@ async def process_product_price(message: Message, state: FSMContext) -> None:
     except (ValueError, AttributeError, TypeError) as ex:
         is_number = False
     text = dict_text[is_number]
-    await message_answer_process(bot, message, state, text, back_keyboard)
+    await message_answer_process(bot, message, state, text, back_menu_user)
     if is_number:
         await state.set_state(PostStates.wait_discount)
         await state.update_data(product_price=product_price)
@@ -622,7 +671,7 @@ async def process_product_discount(message: Message, state: FSMContext) -> None:
                         "и не должна быть меньше нуля и быть больше стоимости товара.\n"
                         "Попробуйте ещё раз ввести цену(без пробелов и знаков препинания)."}
     keyboard = await marketpalce_choice()
-    dict_keyboard = {True: keyboard, False: back_keyboard}
+    dict_keyboard = {True: keyboard, False: back_menu_user}
     data = await state.get_data()
     price = data.get('product_price')
     try:
@@ -662,7 +711,6 @@ async def account_url(message: Message, state: FSMContext) -> None:
     Функция обработки отправки ссылки на аккаунт, с которым
     будут связываться покупатели
     """
-    data = await state.get_data()
     url_acc = message.text
     keyboard_next = await channel_choice()
     keyboard_user = await username_keyboard(message.from_user.username)
