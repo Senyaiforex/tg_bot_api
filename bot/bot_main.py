@@ -604,7 +604,7 @@ async def wait_url_post(message: Message, state: FSMContext) -> None:
         if username not in msg.caption:
             await delete_message(bot, message.from_user.id, msg.message_id)
             await message_answer_process(bot, message, state,
-                                         "Вы не можете удалить это сообщение, так как в нём нет"
+                                         "Вы не можете удалить это сообщение, так как в нём нет "
                                          "упоминания Вашего никнейма!",
                                          back_menu_user)
         else:
