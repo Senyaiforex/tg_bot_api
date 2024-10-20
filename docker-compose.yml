@@ -10,16 +10,15 @@ services:
       - my_network
     env_file:
       - .env
+    volumes:
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
     deploy:
       resources:
         limits:
           memory: 512M
     command: [
       "redis-server",
-      "--maxmemory", "512mb",
-      "--maxmemory-policy", "allkeys-lru",
-      "--lazyfree-lazy-eviction", "yes"
-    ]
+      "/usr/local/etc/redis/redis.conf"]
   fastapi:
     build:
       context: .
