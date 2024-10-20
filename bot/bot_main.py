@@ -316,7 +316,7 @@ async def list_search(callback_query: CallbackQuery, state: FSMContext) -> None:
         list_search = await SearchListRepository.get_search_by_user(session, callback_query.from_user.id)
         if len(list_search) == 0:
             await message_answer_process(bot, callback_query,
-                                         state, 'У вас нет товаров в листе ожидания')
+                                         state, 'У вас нет товаров в листе ожидания', back_menu_user)
             return
         for search in list_search:
             msg = await callback_query.message.answer(text=search.name,
