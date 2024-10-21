@@ -1,0 +1,6 @@
+.venv
+count_code.py
+testfile.py
+/.env
+/dev/
+redis.conf
