@@ -79,6 +79,7 @@ services:
       - bot
     env_file:
       - .env
+    restart: "on-failure"
 networks:
   my_network:
     driver: bridge
