@@ -1,3 +1,4 @@
+import os
 import asyncio
 from loguru import logger
 from datetime import datetime
@@ -12,6 +13,8 @@ from bot_admin import bot as admin_bot
 from models import User
 from utils.bot_utils.text_static import txt_adm, txt_us
 
+redis_password = os.getenv('REDIS_PASSWORD')
+
 logger.add("logs/logs_celery/log_file.log",
            retention="5 days",
            rotation='21:00',
@@ -23,8 +26,8 @@ logger.add("logs/logs_celery/log_file.log",
                   "{message}")
 app = Celery(
         'tasks',
-        broker='redis://redis:6379/0',
-        backend='redis://redis:6379/0'
+        broker=f'redis://:{redis_password}@redis:6379/0',
+        backend=f'redis://:{redis_password}@redis:6379/0'
 )
 app.conf.timezone = 'Europe/Moscow'
 

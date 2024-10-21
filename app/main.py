@@ -28,6 +28,7 @@ from fastapi_cache import FastAPICache
 from fastapi_cache.decorator import cache
 
 DEBUG = os.getenv("DEBUG")
+redis_password = os.getenv("REDIS_PASSWORD")
 logger.add("logs/log_file.log",
            retention=6, level="DEBUG",
            rotation='20:00', compression="zip",
@@ -36,7 +37,7 @@ logger.add("logs/log_file.log",
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    redis = aioredis.from_url("redis://redis-app:6379", decode_responses=True)
+    redis = aioredis.from_url(f"redis://:{redis_password}@redis-app:6379", decode_responses=True)
     FastAPICache.init(RedisBackend(redis), prefix="app-cache")
     await FastAPICache.clear()
     async with engine.begin() as conn:
