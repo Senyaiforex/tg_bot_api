@@ -18,7 +18,7 @@ class OrderRepository:
         :return: инстанс Заказа
         :rtype: Order
         """
-        new_order = Order(amount=amount, user_telegram=user_id, id=20,
+        new_order = Order(amount=amount, user_telegram=user_id,
                           post_id=post_id, user_name=username)
         session.add(new_order)
         await session.commit()
