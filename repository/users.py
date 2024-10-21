@@ -89,7 +89,7 @@ class UserRepository:
         return user
 
     @classmethod
-    async def get_admins(cls, session: async_session) -> list[User]:
+    async def get_admins(cls, session: async_session, superuser: bool=False) -> list[User]:
         """
         Метод для получения всех пользователей с user.admin == True
         из базы данных
@@ -97,10 +97,16 @@ class UserRepository:
         :return: список пользователей
         :rtype: list[User]
         """
-        result = await session.execute(
-                select(User)
-                .where(User.admin == True)
-        )
+        if superuser:
+            result = await session.execute(
+                    select(User)
+                    .where(User.superuser == True)
+            )
+        else:
+            result = await session.execute(
+                    select(User)
+                    .where(User.admin == True)
+            )
         admins = result.scalars().all()
         return admins
 

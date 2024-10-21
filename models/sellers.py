@@ -8,4 +8,5 @@ class CountSellers(Base):
     """
     __tablename__ = 'sellers'
     id = Column(Integer, primary_key=True)
-    count = Column(Integer, comment='Количество продавцов')
+    count = Column(Integer, comment='Количество продавцов', default=0)
+    subscribes_count = Column(Integer, comment='Количество пользователей в группе', default=0)

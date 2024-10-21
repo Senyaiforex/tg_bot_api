@@ -1,5 +1,7 @@
 import os
 import asyncio
+
+from aiogram.types import FSInputFile
 from loguru import logger
 from datetime import datetime
 
@@ -94,7 +96,26 @@ async def work_tasks():
 @logger.catch
 async def work_sellers():
     async for session in get_async_session():
-        await SellerRepository.sellers_clear(session)
+        count_subscribes = await bot.get_chat_member_count(chat_id=-1002090610085)
+        count_users = await SellerRepository.get_count_users(session)
+        count_sellers = await SellerRepository.get_count_sellers(session)
+        difference = count_subscribes - count_users
+        if difference < 0:
+            difference = 0
+        admins = await UserRepository.get_admins(session, True)
+        date = datetime.today().date().strftime('%d-%m-%Y')
+        for admin in admins:
+            try:
+                picture = FSInputFile('static/start_pic.jpg')
+                text = (f"*Статистика на {date}*\n"
+                        f"Количество постов в группе - *{count_sellers}*\n"
+                        f"Количество новых пользователей - *{difference}*")
+                await admin_bot.send_photo(admin_bot, chat_id=admin.id_telegram,
+                                           photo=picture, parse_mode='Markdown',
+                                           caption=text)
+            except TelegramBadRequest as ex:
+                pass
+        await SellerRepository.sellers_clear(count_subscribes, session)
 
 
 @logger.catch
@@ -138,7 +159,7 @@ def setup_periodic_tasks(sender, **kwargs):
             check_tasks.s(), name='check_task-every-10-30'
     )
     sender.add_periodic_task(
-            crontab(hour=0, minute=0),
+            crontab(hour=23, minute=59),
             check_sellers.s(), name='clear_sellers-every-day'
     )
     sender.add_periodic_task(
