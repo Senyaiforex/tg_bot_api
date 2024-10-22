@@ -110,7 +110,7 @@ async def work_sellers():
                 text = (f"*Статистика на {date}*\n"
                         f"Количество постов в группе - *{count_sellers}*\n"
                         f"Количество новых пользователей - *{difference}*")
-                await admin_bot.send_photo(admin_bot, chat_id=admin.id_telegram,
+                await admin_bot.send_photo(chat_id=admin.id_telegram,
                                            photo=picture, parse_mode='Markdown',
                                            caption=text)
             except TelegramBadRequest as ex:
