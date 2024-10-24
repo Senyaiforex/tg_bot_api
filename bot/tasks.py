@@ -1,5 +1,6 @@
 import os
 import asyncio
+from contextlib import suppress
 
 from aiogram.types import FSInputFile
 from loguru import logger
@@ -43,17 +44,13 @@ async def get_async_session() -> async_session:
 
 
 async def delete_message(bot_instance, chat_id, id_message) -> None:
-    try:
+    with suppress(*(TelegramBadRequest, TelegramForbiddenError)):
         await bot_instance.delete_message(chat_id=chat_id, message_id=id_message)
-    except (TelegramBadRequest, TelegramForbiddenError) as ex:
-        pass
 
 
 async def send_message(bot_instance, chat_id, text) -> None:
-    try:
+    with suppress(*(TelegramBadRequest, TelegramForbiddenError)):
         await bot_instance.send_message(chat_id=chat_id, text=text, parse_mode='Markdown')
-    except (TelegramBadRequest, TelegramForbiddenError) as ex:
-        pass
 
 
 async def send_messages_for_admin(bot_instance, admins: list[User], text: str) -> None:
@@ -105,7 +102,7 @@ async def work_sellers():
         admins = await UserRepository.get_admins(session, True)
         date = datetime.today().date().strftime('%d-%m-%Y')
         for admin in admins:
-            try:
+            with suppress(*(TelegramBadRequest, TelegramForbiddenError)):
                 picture = FSInputFile('static/start_pic.jpg')
                 text = (f"*Статистика на {date}*\n"
                         f"Количество постов в группе - *{count_sellers}*\n"
@@ -113,8 +110,6 @@ async def work_sellers():
                 await admin_bot.send_photo(chat_id=admin.id_telegram,
                                            photo=picture, parse_mode='Markdown',
                                            caption=text)
-            except TelegramBadRequest as ex:
-                pass
         await SellerRepository.sellers_clear(count_subscribes, session)
 
 

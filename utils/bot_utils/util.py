@@ -16,9 +16,10 @@ CHANNEL_ID = os.getenv("CHANNEL_ID")
 
 
 async def url_post_keyboard(url):
-    button = [InlineKeyboardButton(text='Посмотреть товар',
+    menu_button = [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_menu")]
+    button_url = [InlineKeyboardButton(text='Посмотреть товар',
                                    url=url)]
-    return InlineKeyboardMarkup(inline_keyboard=[button])
+    return InlineKeyboardMarkup(inline_keyboard=[button_url, menu_button])
 
 
 async def get_user_bot(telegram_id: int, session: AsyncSession):

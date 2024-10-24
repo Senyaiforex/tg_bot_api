@@ -4,12 +4,14 @@ from celery.states import state
 
 import aiohttp_cors
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, MessageId
 from aiohttp import web
 import asyncio
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.bot_main import back_to_menu
+from bot.keyboards import back_keyboard, back_menu_user, menu_button
 from bot_main import check_task_complete, public_post_in_channel, bot
 from loguru import logger
 from bot_admin import bot as bot_admin
@@ -35,18 +37,19 @@ async def get_async_session() -> async_session:
         await session.close()
 
 
-async def send_message(chat_id, text, url=None):
+async def send_message(chat_id, text, url=None, keyboard=None) -> MessageId | None:
     """
     Отправляет сообщение в чат
     """
     keyboard = None if not url else InlineKeyboardMarkup(
-            inline_keyboard=[[InlineKeyboardButton(text='Посмотреть', url=url)]]
+            inline_keyboard=[[InlineKeyboardButton(text='Посмотреть', url=url)], menu_button]
     )
     try:
-        await bot.send_message(chat_id=chat_id, text=text, reply_markup=keyboard)
+        msg = await bot.send_message(chat_id=chat_id, text=text, reply_markup=keyboard)
+        return msg.message_id
 
     except TelegramBadRequest as ex:
-        pass  # логирование в файл
+        return
 
 
 async def delete_message(chat_id, message_id):
@@ -136,10 +139,11 @@ async def payment_post(request):
                                                               text, 325)
             else:
                 url_free_theme = url
-            await send_message(order.user_telegram, text="Ваше объявление оплачено и размещено в группе на 7 дней\n"
-                                                         "Мы оповестим Вас,"
-                                                         " как только срок замещения публикации закончится",
-                               url=url)
+            await send_message(order.user_telegram,
+                               text="Ваше объявление оплачено и размещено в группе на 7 дней\n"
+                                    "Мы оповестим Вас,"
+                                    " как только срок замещения публикации закончится",
+                               url=url, keyboard=back_menu_user)
             await PostRepository.update_post(session, post.id, active=True,
                                              date_expired=date_expired, date_public=date_public,
                                              url_message=url, method='money',

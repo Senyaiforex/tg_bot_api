@@ -8,7 +8,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 import functools
-
+from contextlib import suppress
 from dill.temp import capture
 
 from bot_admin import bot as bot_admin
@@ -55,11 +55,9 @@ async def is_user_subscribed(user_id: int, channel_id: str) -> bool:
     """
     Функция проверки, что пользователь с user_id подписан на канал channel_id
     """
-    try:
+    with suppress(*(TelegramBadRequest, TelegramForbiddenError)):
         member = await bot.get_chat_member(chat_id=channel_id, user_id=user_id)
         return member.status in ["member", "administrator", "creator"]
-    except TelegramBadRequest as e:
-        return False
 
 
 def subscribed(func):
@@ -222,10 +220,8 @@ async def back_to_menu(callback_query: CallbackQuery, state: FSMContext) -> None
                                                          reply_markup=keyboard_sellers)
     menu_buy = await callback_query.message.answer_photo(photo=picture_buyers, caption='',
                                                          reply_markup=keyboard_buyers)
-    try:
+    with suppress(*(TelegramBadRequest, TelegramForbiddenError)):
         await callback_query.message.delete()
-    except TelegramBadRequest as ex:
-        pass
     await state.clear()
     await state.update_data(menu_sellers=menu_sel.message_id, menu_buyers=menu_buy.message_id)
 
@@ -420,10 +416,8 @@ async def del_post(callback_query: CallbackQuery, state: FSMContext) -> None:
             id_main_message = post.url_message_main.split('/')[4]
             id_free_message = post.url_message_free.split('/')[4]
             file_path = os.path.join(os.getcwd(), MEDIA_DIR, post.photo)
-            try:
+            with suppress(FileNotFoundError):
                 os.remove(file_path)
-            except FileNotFoundError as ex:
-                pass
             await PostRepository.post_delete(session, id_post)
             if post.active:
                 await delete_message(bot, chat_id, id_message)
@@ -431,12 +425,12 @@ async def del_post(callback_query: CallbackQuery, state: FSMContext) -> None:
                     await delete_message(bot, chat_id, id_main_message)
                 if id_free_message != id_message:
                     await delete_message(bot, chat_id, id_free_message)
-
-        await message_answer_process(bot, callback_query, state, "Пост удалён!", await reply_keyboard())
-        try:
+        with suppress(TelegramBadRequest):
             await callback_query.message.delete()
-        except TelegramBadRequest as ex:
-            pass
+        msg = await callback_query.message.answer('Пост удалён')
+        await asyncio.sleep(1.5)
+        await delete_message(bot, callback_query.from_user.id, msg.message_id)
+        await back_to_menu(callback_query, state)
 
 
 @dp.callback_query(lambda c: c.data.startswith('my-post_deactivate'))
@@ -459,7 +453,10 @@ async def deactivate_post(callback_query: CallbackQuery, state: FSMContext) -> N
             if id_free_message != id_message:
                 await delete_message(bot, chat_id, id_free_message)
         await PostRepository.update_post(session, id_post, active=False)
-        await message_answer_process(bot, callback_query, state, "Пост снят с публикации", back_menu_user)
+        msg = await callback_query.message.answer('Пост снят с публикации')
+        await asyncio.sleep(1.5)
+        await delete_message(bot, callback_query.from_user.id, msg.message_id)
+        await back_to_menu(callback_query, state)
 
 
 @dp.callback_query(lambda c: c.data.startswith('public_again'))
@@ -568,10 +565,8 @@ async def wait_url_post(message: Message, state: FSMContext) -> None:
             id_main_message = post.url_message_main.split('/')[4]
             id_free_message = post.url_message_free.split('/')[4]
             file_path = os.path.join(os.getcwd(), MEDIA_DIR, post.photo)
-            try:
+            with suppress(FileNotFoundError):
                 os.remove(file_path)
-            except FileNotFoundError as ex:
-                pass
             await PostRepository.post_delete(session, post.id)
             if post.active:
                 await delete_message(bot, chat_id, id_message)
@@ -758,6 +753,8 @@ async def choice_group(callback_query: CallbackQuery, state: FSMContext) -> None
         return
     await callback_query.message.edit_text(text=txt_us.channel_success.format(name=name_channel),
                                            parse_mode='Markdown')
+    await asyncio.sleep(1)
+    await callback_query.message.delete()
     caption = txt_us.public_user.format(
             name=user_data.get('product_name'),
             value=int(user_data.get('product_price')) - int(user_data.get('price_discount')),
@@ -769,11 +766,13 @@ async def choice_group(callback_query: CallbackQuery, state: FSMContext) -> None
     file_path = os.path.join(os.getcwd(), MEDIA_DIR, user_data.get('product_photo'))
     if not os.path.isfile(file_path):
         raise FileNotFoundError(f"Файл по пути {file_path} не найден")
-    await bot.send_photo(chat_id=user_id, photo=FSInputFile(file_path),
-                         caption=caption)
+    msg_ready = await bot.send_photo(chat_id=user_id, photo=FSInputFile(file_path),
+                               caption=caption)
+
     msg = await bot.send_message(user_id, text=txt_us.post_ready, reply_markup=await finish_public())
     await state.update_data(last_bot_message=msg.message_id,
-                            channel=str(channel_id))
+                            channel=str(channel_id),
+                            post_message_ready=msg_ready.message_id)
 
 
 # async def public_again_post(chat_id, pos):
@@ -879,6 +878,8 @@ async def finish(callback_query: CallbackQuery, state: FSMContext) -> None:
     """
     user_id = callback_query.from_user.id
     data = await state.get_data()
+    if data.get('post_message_ready'):
+        await delete_message(bot, user_id, data.get('post_message_ready'))
     method = data.get('method')
     logger.info(f"Размещение поста. Метод - {method}")
     async for session in get_async_session():
