@@ -16,9 +16,9 @@ friends = Table(
 
 users_tasks = Table(
         'users_tasks', Base.metadata,
-        Column('user_id', ForeignKey('users.id'),
+        Column('user_id', ForeignKey('users.id', ondelete='CASCADE'),
                primary_key=True),
-        Column('task_id', ForeignKey('tasks.id'),
+        Column('task_id', ForeignKey('tasks.id', ondelete='CASCADE'),
                primary_key=True),
 )
 

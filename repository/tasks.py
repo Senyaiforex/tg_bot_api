@@ -1,13 +1,12 @@
 import datetime
-from sqlalchemy import func
+from sqlalchemy import func, update
 from sqlalchemy import select, delete
 from sqlalchemy.orm import joinedload, selectinload
 
 from models import Task, User
-from datetime import date, datetime
+import datetime
 from database import async_session
 from models.tasks import CategoryTask
-
 
 class TaskRepository:
     dict_categories = {
@@ -130,7 +129,7 @@ class TaskRepository:
         return tasks
 
     @classmethod
-    async def get_count_tasks(cls, session: async_session, date: date) -> int:
+    async def get_count_tasks(cls, session: async_session, date: datetime.date) -> int:
         """
         Метод ддя получения количества активных задач за период date
         :param session: Асинхронная сессия
@@ -172,7 +171,7 @@ class TaskRepository:
         await session.commit()
 
     @classmethod
-    async def get_tasks_by_celery(cls, session: async_session, today: date) -> int:
+    async def get_tasks_by_celery(cls, session: async_session, today: datetime.date) -> int:
         """
         Функция для получения всех заданий в базе данных
         Дата действия которых уже закончилась
@@ -188,16 +187,18 @@ class TaskRepository:
         return tasks_all
 
     @classmethod
-    async def task_delete_by_celery(cls, session: async_session, task_id: int) -> None:
+    async def task_deactivate_by_celery(cls, session: async_session, today: datetime.date) -> None:
         """
         Метод для удаления задачи по её task_id
         :param session: Асинхронная сессия
         :param task_id: ID задания в БД
         :return: None
         """
+        today = datetime.datetime.today().date()
         stmt = (
-                delete(Task).
-                where(Task.id == task_id)
+                update(Task).
+                values(active=False).
+                where(Task.date_limit < today)
         )
         await session.execute(stmt)
         await session.commit()

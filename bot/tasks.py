@@ -84,10 +84,10 @@ async def work_tasks():
         today = datetime.today().date()
         tasks = await TaskRepository.get_tasks_by_celery(session, today)
         admins = await UserRepository.get_admins(session)
+        await TaskRepository.task_deactivate_by_celery(session, today)
         for task in tasks:
             await send_messages_for_admin(admin_bot, admins, txt_adm.task_expired.format(name=task.description,
                                                                                          url=task.url))
-            await TaskRepository.task_delete_by_celery(session, task.id)
 
 
 @logger.catch

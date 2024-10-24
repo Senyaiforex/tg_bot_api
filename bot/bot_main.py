@@ -232,6 +232,9 @@ async def add_post_query(callback_query: CallbackQuery, state: FSMContext) -> No
     """
     Функция обработки нажатия на inline-кнопку «Опубликовать пост»
     """
+    data = await state.get_data()
+    if data.get('post_message_ready'):
+        await delete_message(bot, callback_query.from_user.id, data.get('post_message_ready'))
     picture = FSInputFile('static/seller_menu.jpg')
     keyboard = await public_keyboard()
     await delete_menu(state, bot, callback_query.from_user.id)
