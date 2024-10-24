@@ -10,7 +10,7 @@ import asyncio
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.keyboards import back_keyboard, back_menu_user, menu_button
+from keyboards import back_keyboard, back_menu_user, menu_button
 from bot_main import check_task_complete, public_post_in_channel, bot
 from loguru import logger
 from bot_admin import bot as bot_admin
