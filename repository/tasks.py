@@ -59,9 +59,10 @@ class TaskRepository:
         :return: bool
         """
         date = datetime.strptime(date, '%d.%m.%Y')
-        task = await session.execute(select(Task)
+        result = await session.execute(select(Task)
                                      .where(Task.url == url)
                                      .limit(1))
+        task = result.scalar_one_or_none()
         if task:
             task.date_limit = date
             task.active = True
