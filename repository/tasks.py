@@ -58,6 +58,15 @@ class TaskRepository:
         :param session: Асинхронная сессия
         :return: bool
         """
+        date = datetime.strptime(date, '%d.%m.%Y')
+        task = await session.execute(select(Task)
+                                     .where(Task.url == url)
+                                     .limit(1))
+        if task:
+            task.date_limit = date
+            task.active = True
+            await session.commit()
+            return True
         new_task = Task(
                 url=url,
                 description=description,
