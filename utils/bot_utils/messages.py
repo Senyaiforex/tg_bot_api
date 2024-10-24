@@ -5,7 +5,7 @@ from aiogram.types import Message, FSInputFile, InlineKeyboardMarkup, CallbackQu
 from repository import UserRepository
 import logging
 from aiogram.exceptions import TelegramNotFound
-
+from contextlib import suppress
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -27,10 +27,8 @@ async def delete_message(bot: Bot, user_id: int, previous_id: int):
     :param previous_id:
     :return:
     """
-    try:
+    with suppress(*(TelegramBadRequest, TelegramForbiddenError)):
         await bot.delete_message(chat_id=user_id, message_id=previous_id)
-    except (TelegramBadRequest, TelegramForbiddenError) as ex:
-        pass  # логирование в файл
 
 
 async def delete_list_messages(data, bot, user_id):
@@ -113,14 +111,12 @@ async def message_answer_process(bot: Bot,
     data = await state.get_data()
     previous_message_id = data.get('last_bot_message')
     if isinstance(object_interaction, Message):
-        try:
+        with suppress(TelegramBadRequest, TelegramForbiddenError):
             user_id = object_interaction.chat.id
             await object_interaction.delete()
             msg = await object_interaction.answer(text=text,
                                                   reply_markup=keyboard,
                                                   parse_mode='Markdown')
-        except TelegramBadRequest as e:
-            pass
     else:
         await object_interaction.answer()
         user_id = object_interaction.from_user.id
@@ -138,21 +134,17 @@ async def send_messages_for_admin(session, bot, url_post, username):
     text = f'От автора - @{username}' if username else ''
     text = text.replace("_", "\_")
     for admin in admins:
-        try:
+        with suppress(*(TelegramBadRequest, TelegramForbiddenError)):
             await bot.send_message(admin.id_telegram,
                                    text=f'Здравствуйте, администратор!\n'
                                         f'В группе публиковано новое объявление - [перейти]({url_post})\n' + text,
                                    parse_mode='Markdown')
-        except (TelegramBadRequest, TelegramForbiddenError) as e:
-            pass
 
 
 async def send_message(bot, chat_id, text, keyboard):
-    try:
+    with suppress(*(TelegramBadRequest, TelegramForbiddenError)):
         await bot.send_message(chat_id,
                                text=text,
                                parse_mode='Markdown',
                                reply_markup=keyboard
                                )
-    except (TelegramBadRequest, TelegramForbiddenError) as e:
-        pass
