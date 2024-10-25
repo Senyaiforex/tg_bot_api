@@ -75,7 +75,8 @@ class TaskRepository:
                         'description': description,
                         'category_id': cls.dict_categories[type_task],
                         'date_limit': date,
-                        'reward': reward
+                        'reward': reward,
+                        'active': True
                 }
         )
         # task = Task(
