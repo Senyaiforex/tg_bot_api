@@ -150,9 +150,15 @@ async def create_data_tasks(task_validator: BaseModel,
         tasks_not_completed = []
         for task in category.tasks:
             if task.id not in user_tasks_ids and date_today <= task.date_limit and task.active:
-                tasks_not_completed.append(task_validator(id=task.id, description=task.description, url=task.url))
+                tasks_not_completed.append(task_validator(id=task.id,
+                                                          description=task.description,
+                                                          url=task.url,
+                                                          reward=task.reward))
             elif task.id in user_tasks_ids:
-                completed_tasks.append(task_validator(id=task.id, description=task.description, url=task.url))
+                completed_tasks.append(task_validator(id=task.id,
+                                                      description=task.description,
+                                                      url=task.url,
+                                                      reward=task.reward))
 
         categories_output.append(category_validator(
                 id=category.id,
