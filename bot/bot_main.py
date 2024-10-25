@@ -849,8 +849,9 @@ async def public_and_create_post(session, callback_query, data, state, method):
                                                           text, 325)
         else:
             url_free_theme = url
-        await message_answer_process(bot, callback_query, state, txt_us.post_success.format(url=url),
-                                     back_keyboard)
+        await message_answer_process(bot, callback_query, state,
+                                     txt_us.post_success.format(url=url),
+                                     back_menu_user)
         await create_post_user(session, bot, **dict_post_params,
                                active=True, url_message=url, url_message_free=url_free_theme,
                                url_message_main=url_main_theme)
@@ -889,8 +890,12 @@ async def public_and_update_post(session, callback_query, state, data, post):
                                                           text, 325)
         else:
             url_free_theme = url
-        await message_answer_process(bot, callback_query, state, txt_us.post_success.format(url=url))
-        await message_answer_process(bot, callback_query, state, txt_us.post_success.format(url=url))
+        await message_answer_process(bot, callback_query, state,
+                                     txt_us.post_success.format(url=url),
+                                     back_menu_user)
+        await message_answer_process(bot, callback_query, state,
+                                     txt_us.post_success.format(url=url),
+                                     back_menu_user)
         await PostRepository.update_post(session, int(id_post), active=True,
                                          date_expired=date_expired, date_public=date_public,
                                          url_message=url, method=method, url_message_main=url_main_theme,
