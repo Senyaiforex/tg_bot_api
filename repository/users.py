@@ -231,8 +231,7 @@ class UserRepository:
         else:
             if user.count_coins < amount:
                 raise HTTPException(status_code=400, detail="Not enough coins")
-            user.count_coins -= amount
-            await session.commit()
+            await user.update_count_coins(session, amount, description, False, False)
         return user
 
     @classmethod
