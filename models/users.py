@@ -108,7 +108,6 @@ class User(Base):
                 add=add
         )
         session.add(transaction)
-        await session.commit()
 
     @rank_updater
     async def set_friends(self, session: async_session, amount: int):
@@ -132,7 +131,7 @@ class HistoryTransaction(Base):
     user_id = Column(Integer, ForeignKey('users.id'))
     change_amount = Column(Integer, nullable=False)
     description = Column(String, nullable=False)
-    add = Column(Boolean, nullable=False, default=True)
+    add = Column(Boolean, nullable=True, default=True)
     transaction_date = Column(DateTime,
                               default=datetime.utcnow,
                               nullable=False)
