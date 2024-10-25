@@ -117,6 +117,10 @@ async def start(message: Message, command: CommandObject, state: FSMContext) -> 
         await message_answer_process(bot, message,
                                      state, txt_us.info_search, keyboard=await search_keyboard())
         return
+    elif args and args.startswith("add_post"):
+        method = args.split("_")[2]
+        func = await add_post_for_link(message, state, method)
+        return func
     if await is_user_subscribed(user_id, CHANNEL_ID):
         # Если пользователь подписан, показываем меню
         keyboard_sellers = await menu_sellers_keyboard()
@@ -347,6 +351,34 @@ async def del_search(callback_query: CallbackQuery, state: FSMContext) -> None:
     await message_answer_process(bot, callback_query, state,
                                  "Ваше сообщение удалено",
                                  back_menu_user)
+
+
+async def add_post_for_link(message: Message, state: FSMContext, method: str) -> None:
+    """
+    Функция обработки ссылки на публикацию поста
+    """
+    user_id = message.from_user.id
+    if method == "free":
+        async for session in get_async_session():
+            user = await UserRepository.get_user_tg(user_id, session)
+            if user.count_free_posts >= 10:
+                await message_answer_process(bot, message, state,
+                                             "Вы достигли лимита бесплатных постов - 10.\n"
+                                             "Теперь Вам недоступен этот способ публикации",
+                                             back_menu_user)
+                return
+    text = dict_text.get(method, None)
+    if text:
+        await state.update_data(method=method)
+        text = dict_text.get(method, None)
+        await message_answer_process(bot, message,
+                                     state, text, back_menu_user)
+        await state.set_state(PostStates.wait_name)
+    else:
+        await message_answer_process(bot, message,
+                                     state, "Данный метод находится в разработке", back_menu_user)
+
+        return
 
 
 @dp.callback_query(lambda c: c.data.startswith('add_post'))
@@ -770,7 +802,7 @@ async def choice_group(callback_query: CallbackQuery, state: FSMContext) -> None
     if not os.path.isfile(file_path):
         raise FileNotFoundError(f"Файл по пути {file_path} не найден")
     msg_ready = await bot.send_photo(chat_id=user_id, photo=FSInputFile(file_path),
-                               caption=caption)
+                                     caption=caption)
 
     msg = await bot.send_message(user_id, text=txt_us.post_ready, reply_markup=await finish_public())
     await state.update_data(last_bot_message=msg.message_id,
