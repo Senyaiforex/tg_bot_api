@@ -1013,15 +1013,15 @@ async def check_task_complete(telegram_id: int, task_id: int) -> bool:
         if task.category_id == 2:
             if await is_user_subscribed(telegram_id, await get_channel_id_by_url(task.url)):
                 await TaskRepository.add_task(user, task, session)
-                await PullRepository.update_pull(session, 5000, 'current_tasks')
-                await user.update_count_coins(session, 5000, 'Выполнение задания')
+                await PullRepository.update_pull(session, task.reward, 'current_tasks')
+                await user.update_count_coins(session, task.reward, 'Выполнение задания')
                 return True
             else:
                 return False
         else:  # Пока что возвращаем True для всех остальных задач
             await TaskRepository.add_task(user, task, session)
-            await PullRepository.update_pull(session, 5000, 'current_tasks')
-            await user.update_count_coins(session, 5000, 'Выполнение задания')
+            await PullRepository.update_pull(session, task.reward, 'current_tasks')
+            await user.update_count_coins(session, task.reward, 'Выполнение задания')
             return True
 
 

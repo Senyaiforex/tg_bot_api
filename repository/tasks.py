@@ -1,5 +1,6 @@
 import datetime
 from sqlalchemy import func, update
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy import select, delete
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -48,33 +49,42 @@ class TaskRepository:
 
     @classmethod
     async def create_task(cls, url: str, description: str, type_task: str,
-                          date: str, session: async_session) -> bool:
+                          date: str, reward: int, session: async_session) -> bool:
         """
         Метод для создания нового задания
         :param url: ссылка на задание
         :param description: описание задания
         :param type_task: тип задания
         :param date: дата, до которой действует
+        :param reward: награда за выполнение
         :param session: Асинхронная сессия
         :return: bool
         """
         date = datetime.datetime.strptime(date, '%d.%m.%Y')
-        result = await session.execute(select(Task)
-                                     .where(Task.url == url)
-                                     .limit(1))
-        task = result.scalar_one_or_none()
-        if task:
-            task.date_limit = date
-            task.active = True
-            await session.commit()
-            return True
-        new_task = Task(
+        stmt = insert(Task).values(
                 url=url,
                 description=description,
                 category_id=cls.dict_categories[type_task],
-                date_limit=date
+                date_limit=date,
+                reward=reward
         )
-        session.add(new_task)
+        query = stmt.on_conflict_do_update(
+                index_elements=['url'],
+                set_={
+                        'description': description,
+                        'category_id': cls.dict_categories[type_task],
+                        'date_limit': date,
+                        'reward': reward
+                }
+        )
+        # task = Task(
+        #         url=url,
+        #         description=description,
+        #         category_id=cls.dict_categories[type_task],
+        #         date_limit=date,
+        #         reward=reward
+        # )
+        await session.execute(query)
         await session.commit()
         return True
 

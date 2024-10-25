@@ -6,6 +6,7 @@ class TaskOut(BaseModel):
     id: int = Field(default=..., description='ID задачи')
     description: str = Field(default=..., description='Описание задачи')
     url: str = Field(default=..., description='Ссылка')
+    reward: int = Field(default=..., description='Награда за выполнение')
 
     class Config:
         from_attributes = True

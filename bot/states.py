@@ -48,6 +48,7 @@ class TaskStates(StatesGroup):
     wait_url = State()
     wait_date = State()
     wait_url_delete = State()
+    wait_reward = State()
 
 
 class LiquidStates(StatesGroup):

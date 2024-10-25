@@ -13,10 +13,11 @@ class Task(Base):
     id = Column(Integer, primary_key=True, index=True)
     category_id = Column(Integer, ForeignKey('categories_tasks.id'))
     description = Column(String, comment='Описание')
-    url = Column(String, comment='Ссылка на задачу', index=True)
+    url = Column(String, comment='Ссылка на задачу', unique=True, index=True)
     users = relationship("User", secondary=users_tasks, back_populates='tasks')
     date_limit = Column(Date, comment="Дата действия задания")
     active = Column(Boolean, default=True, comment="Активность")
+    reward = Column(Integer, default=0, comment="Награда за выполнение задания")
 
 
 class CategoryTask(Base):

@@ -606,9 +606,31 @@ async def wait_url(message: Message, session, state: FSMContext) -> None:
     if 'http' not in url:
         text = txt_adm.task_add_url
     else:
-        text = txt_adm.task_add_date
+        text = txt_adm.reward_input
         await state.update_data(url=url)
+        await state.set_state(TaskStates.wait_reward)
+    await message_answer_process(bot, message, state,
+                                 text, back_keyboard, False)
+
+
+@dp.message(TaskStates.wait_reward)
+@logger.catch
+@permissions_check  # Просто прокинуть сессию
+async def wait_date(message: Message, session, state: FSMContext) -> None:
+    """
+    Функция обработки отправки даты, до которой действует задание
+    """
+    data = await state.get_data()
+    dict_text = {True: txt_adm.task_add_date,
+                 False: txt_adm.reward_invalid}
+    try:
+        reward = int(message.text.replace(' ', ''))
+        is_number = True
+        await state.update_data(reward=reward)
         await state.set_state(TaskStates.wait_date)
+    except (ValueError, AttributeError, TypeError) as ex:
+        is_number = False
+    text = dict_text[is_number]
     await message_answer_process(bot, message, state,
                                  text, back_keyboard, False)
 
@@ -626,10 +648,11 @@ async def wait_date(message: Message, session, state: FSMContext) -> None:
         text = txt_adm.task_date_invalid
     else:
         text = txt_adm.task_add_success
-        type_task, description, url = (data.get('type_task'),
-                                       data.get('description'),
-                                       data.get('url'))
-        await TaskRepository.create_task(url, description, type_task, date, session)
+        type_task, description, url, reward = (data.get('type_task'),
+                                               data.get('description'),
+                                               data.get('url'),
+                                               data.get('reward'))
+        await TaskRepository.create_task(url, description, type_task, date, reward, session)
         await state.set_state(None)
 
     await message_answer_process(bot, message, state,
