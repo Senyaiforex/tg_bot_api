@@ -66,7 +66,8 @@ class TaskRepository:
                 description=description,
                 category_id=cls.dict_categories[type_task],
                 date_limit=date,
-                reward=reward
+                reward=reward,
+                active=True
         )
         query = stmt.on_conflict_do_update(
                 index_elements=['url'],
