@@ -208,7 +208,7 @@ class TaskRepository:
         stmt = (
                 update(Task).
                 values(active=False).
-                where(Task.date_limit > today)
+                where(Task.date_limit < today)
         )
         await session.execute(stmt)
         await session.commit()
