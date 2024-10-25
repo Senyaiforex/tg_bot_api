@@ -74,7 +74,7 @@ async def get_cache():
 
 
 origins = [
-        "https://app.tgbuyer.ru",
+        os.getenv("SITE_NAME"),
 ]
 app.add_middleware(
         CORSMiddleware,
