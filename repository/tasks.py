@@ -58,7 +58,7 @@ class TaskRepository:
         :param session: Асинхронная сессия
         :return: bool
         """
-        date = datetime.strptime(date, '%d.%m.%Y')
+        date = datetime.datetime.strptime(date, '%d.%m.%Y')
         result = await session.execute(select(Task)
                                      .where(Task.url == url)
                                      .limit(1))
@@ -72,7 +72,7 @@ class TaskRepository:
                 url=url,
                 description=description,
                 category_id=cls.dict_categories[type_task],
-                date_limit=datetime.strptime(date, '%d.%m.%Y')
+                date_limit=date
         )
         session.add(new_task)
         await session.commit()
@@ -130,7 +130,7 @@ class TaskRepository:
         :return: список заданий
         :rtype: list[Task
         """
-        today = datetime.today()
+        today = datetime.datetime.today().date()
         result = await session.execute(
                 select(Task)
                 .where(Task.date_limit >= today)
