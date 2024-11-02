@@ -15,7 +15,7 @@ from repository import PostRepository, TaskRepository, UserRepository, SellerRep
 from bot_admin import bot as admin_bot
 from models import User
 from utils.bot_utils.text_static import txt_adm, txt_us
-
+from asgiref.sync import async_to_sync
 redis_password = os.getenv('REDIS_PASSWORD')
 
 logger.add("logs/logs_celery/log_file.log",
@@ -34,7 +34,6 @@ app = Celery(
 )
 app.conf.timezone = 'Europe/Moscow'
 
-loop = asyncio.get_event_loop()
 
 
 async def get_async_session() -> async_session:
@@ -60,22 +59,22 @@ async def send_messages_for_admin(bot_instance, admins: list[User], text: str) -
 
 @app.task
 def check_posts():
-    asyncio.run(work_posts())
+    async_to_sync(work_posts)()
 
 
 @app.task
 def check_tasks():
-    asyncio.run(work_tasks())
+    async_to_sync(work_tasks)()
 
 
 @app.task
 def check_sellers():
-    asyncio.run(work_sellers())
+    async_to_sync(work_sellers)()
 
 
 @app.task
 def check_and_clear_liquid():
-    asyncio.run(liquid_clear())
+    async_to_sync(liquid_clear)()
 
 
 @logger.catch
@@ -146,7 +145,7 @@ async def work_posts():
 @app.on_after_configure.connect
 def setup_periodic_tasks(sender, **kwargs):
     sender.add_periodic_task(
-            crontab(hour=21, minute=53),
+            crontab(hour=21, minute=58),
             check_posts.s(), name='check_post-every-16-00'
     )
     sender.add_periodic_task(
