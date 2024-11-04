@@ -377,7 +377,7 @@ class UserRepository:
         """
         result = await session.execute(
                 select(User)
-                .options(joinedload(User.rank))
+                .options(selectinload(User.rank))
                 .limit(limit)
                 .offset(offset)
                 .order_by(User.total_coins.desc())
