@@ -114,3 +114,4 @@ class UserTopOut(BaseModel):
     id_telegram: int = Field(..., description='ID пользователя')
     user_name: str = Field(..., description='Никнейм пользователя')
     count_coins: int = Field(..., description='Количество токенов')
+    rank: Rank

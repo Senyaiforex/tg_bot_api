@@ -376,19 +376,19 @@ class UserRepository:
         :rtype: list[dict]
         """
         result = await session.execute(
-                select(User.id_telegram, User.user_name, User.total_coins, User.rank.rank.name)
+                select(User)
                 .options(joinedload(User.rank))
                 .limit(limit)
                 .offset(offset)
                 .order_by(User.total_coins.desc())
         )
-        users = result.fetchall()
-        users_list = [
-                dict(id_telegram=row[0], user_name=row[1], total_coins=row[2])
-                for row in users
-        ]
+        users = result.scalars().all()
+        # users_list = [
+        #         dict(id_telegram=row[0], user_name=row[1], total_coins=row[2])
+        #         for row in users
+        # ]
 
-        return users_list
+        return users
 
     @classmethod
     async def get_count_users(cls, session: async_session) -> int:

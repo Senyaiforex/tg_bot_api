@@ -168,7 +168,7 @@ async def get_coins(id_telegram: Annotated[int, Path(description="Telegram ID п
     return JSONResponse(content={'count_coins': f'{coins}'})
 
 
-@app.get("/api/get_top_users")
+@app.get("/api/get_top_users", response_model=list[UserTopOut])
 async def get_top_users(limit: int = Query(default=10, description='Количество'),
                         offset: int = Query(default=0, description='Пагинация'),
                         session=Depends(get_async_session)):
