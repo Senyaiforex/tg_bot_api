@@ -115,3 +115,5 @@ class UserTopOut(BaseModel):
     user_name: str = Field(..., description='Никнейм пользователя')
     count_coins: int = Field(..., description='Количество токенов')
     rank: Rank
+    class Config:
+        from_attributes = True
