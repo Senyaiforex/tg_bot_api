@@ -182,7 +182,8 @@ async def get_top_users(limit: int = Query(default=10, description='Количе
         ◦ 200 OK: JSON объект, содержащий массив с топом пользователей.\n
     """
     users = await UserRepository.get_users_limit(limit, offset, session)
-    return JSONResponse(users, status_code=200)
+    users_list = [UserTopOut.from_orm(user) for user in users]
+    return JSONResponse(users_list, status_code=200)
 
 
 @app.get("/api/get_count_pharmd/{id_telegram}")
