@@ -376,7 +376,8 @@ class UserRepository:
         :rtype: list[dict]
         """
         result = await session.execute(
-                select(User.id_telegram, User.user_name, User.total_coins)
+                select(User.id_telegram, User.user_name, User.total_coins, User.rank.rank.name)
+                .options(joinedload(User.rank))
                 .limit(limit)
                 .offset(offset)
                 .order_by(User.total_coins.desc())
