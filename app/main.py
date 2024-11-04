@@ -2,7 +2,7 @@ import os
 import sys
 import asyncio
 from sys import prefix
-
+from fastapi.encoders import jsonable_encoder
 from loguru import logger
 import aiohttp
 import uvicorn
@@ -168,7 +168,7 @@ async def get_coins(id_telegram: Annotated[int, Path(description="Telegram ID п
     return JSONResponse(content={'count_coins': f'{coins}'})
 
 
-@app.get("/api/get_top_users", response_model=list[UserTopOut])
+@app.get("/api/get_top_users", response_model=list[dict])
 async def get_top_users(limit: int = Query(default=10, description='Количество'),
                         offset: int = Query(default=0, description='Пагинация'),
                         session=Depends(get_async_session)):
@@ -182,8 +182,12 @@ async def get_top_users(limit: int = Query(default=10, description='Количе
         ◦ 200 OK: JSON объект, содержащий массив с топом пользователей.\n
     """
     users = await UserRepository.get_users_limit(limit, offset, session)
-    users_list = [UserTopOut.from_orm(user) for user in users]
-    return JSONResponse(users_list, status_code=200)
+    list_users = [{'id_telegram': user.id_telegram,
+                   'username': user.user_name,
+                   'count_coins': user.total_coins,
+                   'rank': user.rank.rank.name,
+                   'level': user.rank.level} for user in users]
+    return JSONResponse(list_users, status_code=200)
 
 
 @app.get("/api/get_count_pharmd/{id_telegram}")
