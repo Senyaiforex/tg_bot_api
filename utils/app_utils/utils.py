@@ -66,15 +66,15 @@ async def create_data_posts(session: async_session,
     """
     liquid_instance = await PostRepository.get_liquid_posts(session)
     dict_type_posts = {
-            0: ('Посты бесплатно', liquid_instance.free_posts,
+            0: ('Бесплатных постов за месяц', liquid_instance.free_posts,
                 liquid_instance.current_free, 0),
-            1: ('Посты за токены', liquid_instance.token_posts,
+            1: ('Постов за токены в месяц', liquid_instance.token_posts,
                 liquid_instance.current_token, 750),
-            2: ('Посты за монеты', liquid_instance.coins_posts,
+            2: ('Постов за монеты в месяц', liquid_instance.coins_posts,
                 liquid_instance.current_coins, 10000),
-            3: ('Посты за рубли', liquid_instance.money_posts,
+            3: ('Постов за рубли в месяц', liquid_instance.money_posts,
                 liquid_instance.current_money, 1000),
-            4: ('Посты за звёзды', liquid_instance.stars_posts,
+            4: ('Постов за звезды в месяц', liquid_instance.stars_posts,
                 liquid_instance.current_stars, 30)
     }
     list_models = []
@@ -93,7 +93,7 @@ async def create_data_posts(session: async_session,
         current_percent = min(int((today_count + post_by_sellers) / 200 * 100), 100)
         need_percent = max(100 - current_percent, 0)
         list_models.append({
-                "name": 'Посты за день',
+                "name": 'Всего постов за день',
                 "price": 0,
                 "data": [current_percent, need_percent],
                 "current": today_count + post_by_sellers,
