@@ -56,25 +56,24 @@ async def send_messages_for_admin(bot_instance, admins: list[User], text: str) -
     for admin in admins:
         await send_message(bot_instance, chat_id=admin.id_telegram, text=text)
 
-
 @app.task
 def check_posts():
-    async_to_sync(work_posts)()
+    asyncio.run(work_posts())
 
 
 @app.task
 def check_tasks():
-    async_to_sync(work_tasks)()
+    asyncio.run(work_tasks())
 
 
 @app.task
 def check_sellers():
-    async_to_sync(work_sellers)()
+    asyncio.run(work_sellers())
 
 
 @app.task
 def check_and_clear_liquid():
-    async_to_sync(liquid_clear)()
+    asyncio.run(liquid_clear())
 
 
 @logger.catch
