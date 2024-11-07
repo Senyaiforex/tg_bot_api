@@ -991,7 +991,6 @@ async def handle_message(message: Message):
                 url = f"https://t.me/Buyer_Marketplace/{topic_number}/{message.message_id}"
                 await notification(search_posts, message.caption, url, bot)
 
-
 async def get_channel_id_by_url(url: str) -> str:
     """
     Функция получения ID канала по его url

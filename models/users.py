@@ -23,6 +23,30 @@ users_tasks = Table(
 )
 
 
+async def reward_for_friend(id_telegram, session):
+    """
+    Функция для награды пользователя за приглашенного друга, когда его друг достиг 11 уровня
+    :param id_telegram:
+    :param session:
+    :return:
+    """
+    stmt = select(User).join(
+            friends, friends.c.friend_2_id_telegram == id_telegram).filter(
+            friends.c.friend_1_id_telegram == User.id_telegram)
+    result = await session.execute(stmt)
+    user = result.scalar_one_or_none()
+    if user:
+        user.count_coins += 50000
+        user.total_coins += 50000
+        transaction = HistoryTransaction(
+                user_id=user.id,
+                change_amount=50000,
+                description='Достижение Copper League приглашенным другом',
+                add=True
+        )
+        session.add(transaction)
+        await session.commit()
+
 def rank_updater(func):
     """
     Декоратор для обновления ранга при каких-либо изменениях в модели User
@@ -45,6 +69,9 @@ def rank_updater(func):
                              self.count_tasks >= rank_next.required_tasks))):
                     self.spinners += 3
                     self.rank_id = rank_next.id
+                    if self.rank_id == 11:
+                        await reward_for_friend(self.id_telegram, session)
+
         except TypeError as ex:
             pass
         await session.commit()
