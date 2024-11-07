@@ -31,8 +31,8 @@ async def reward_for_friend(id_telegram, session):
     :return:
     """
     stmt = select(User).join(
-            friends, friends.c.friend_2_id_telegram == id_telegram).filter(
-            friends.c.friend_1_id_telegram == User.id_telegram)
+            friends, friends.c.friend2_id_telegram == id_telegram).filter(
+            friends.c.friend1_id_telegram == User.id_telegram)
     result = await session.execute(stmt)
     user = result.scalar_one_or_none()
     if user:

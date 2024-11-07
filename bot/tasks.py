@@ -1,6 +1,6 @@
 import os
 import asyncio
-from contextlib import suppress
+from contextlib import suppress, asynccontextmanager
 
 from aiogram.types import FSInputFile
 from loguru import logger
@@ -9,6 +9,8 @@ from datetime import datetime
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from celery import Celery
 from celery.schedules import crontab
+from sqlalchemy.ext.asyncio import async_scoped_session
+
 from bot_main import bot
 from database import async_session
 from repository import PostRepository, TaskRepository, UserRepository, SellerRepository
@@ -16,6 +18,7 @@ from bot_admin import bot as admin_bot
 from models import User
 from utils.bot_utils.text_static import txt_adm, txt_us
 from asgiref.sync import async_to_sync
+
 redis_password = os.getenv('REDIS_PASSWORD')
 
 logger.add("logs/logs_celery/log_file.log",
@@ -34,12 +37,24 @@ app = Celery(
 )
 app.conf.timezone = 'Europe/Moscow'
 
+loop = asyncio.get_event_loop()
 
+@asynccontextmanager
+async def scoped_session():
+    scoped_factory = async_scoped_session(
+        async_session,
+        scopefunc=asyncio.current_task,
+    )
+    try:
+        async with scoped_factory() as s:
+            yield s
+    finally:
+        await scoped_factory.remove()
 
-async def get_async_session() -> async_session:
-    async with async_session() as session:
-        yield session
-        await session.close()
+# async def get_async_session() -> async_session:
+#     async with async_session() as session:
+#         yield session
+#         await session.close()
 
 
 async def delete_message(bot_instance, chat_id, id_message) -> None:
@@ -56,29 +71,30 @@ async def send_messages_for_admin(bot_instance, admins: list[User], text: str) -
     for admin in admins:
         await send_message(bot_instance, chat_id=admin.id_telegram, text=text)
 
+
 @app.task
 def check_posts():
-    asyncio.run(work_posts())
+    loop.run_until_complete(work_posts())
 
 
 @app.task
 def check_tasks():
-    asyncio.run(work_tasks())
+    loop.run_until_complete(work_tasks())
 
 
 @app.task
 def check_sellers():
-    asyncio.run(work_sellers())
+    loop.run_until_complete(work_sellers())
 
 
 @app.task
 def check_and_clear_liquid():
-    asyncio.run(liquid_clear())
+    loop.run_until_complete(liquid_clear())
 
 
 @logger.catch
 async def work_tasks():
-    async for session in get_async_session():
+    async with scoped_session() as session:
         today = datetime.today().date()
         tasks = await TaskRepository.get_tasks_by_celery(session, today)
         admins = await UserRepository.get_admins(session)
@@ -90,7 +106,7 @@ async def work_tasks():
 
 @logger.catch
 async def work_sellers():
-    async for session in get_async_session():
+    async with scoped_session() as session:
         count_subscribes = await bot.get_chat_member_count(chat_id=-1002090610085)
         count_users = await SellerRepository.get_count_users(session)
         count_sellers = await SellerRepository.get_count_sellers(session)
@@ -113,13 +129,13 @@ async def work_sellers():
 
 @logger.catch
 async def liquid_clear():
-    async for session in get_async_session():
+    async with scoped_session() as session:
         await PostRepository.liquid_clear(session)
 
 
 @logger.catch
 async def work_posts():
-    async for session in get_async_session():
+    async with scoped_session() as session:
         today = datetime.today().date()
         posts = await PostRepository.get_posts_by_celery(session, today)
         for post in posts:
@@ -152,7 +168,7 @@ def setup_periodic_tasks(sender, **kwargs):
             check_tasks.s(), name='check_task-every-10-30'
     )
     sender.add_periodic_task(
-            crontab(hour=23, minute=59),
+            crontab(hour=23, minute=14),
             check_sellers.s(), name='clear_sellers-every-day'
     )
     sender.add_periodic_task(
