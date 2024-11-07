@@ -7,6 +7,11 @@ from sqlalchemy import Enum
 from .rank import Rank
 
 class BaseUser(BaseModel):
+    id: int = Field(
+            ...,
+            description='ID пользователя в базе',
+            gt=0
+    )
     id_telegram: int = Field(
             ...,
             description='ID пользователя телеграм',
