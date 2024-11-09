@@ -4,7 +4,7 @@ from contextlib import suppress, asynccontextmanager
 
 from aiogram.types import FSInputFile
 from loguru import logger
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from celery import Celery
@@ -107,24 +107,28 @@ async def work_tasks():
 @logger.catch
 async def work_sellers():
     async with scoped_session() as session:
+        date = datetime.today().date()
+        next_date = date + timedelta(days=1)
         count_subscribes = await bot.get_chat_member_count(chat_id=-1002090610085)
-        count_users = await SellerRepository.get_count_users(session)
-        count_sellers = await SellerRepository.get_count_sellers(session)
+        count_users = await SellerRepository.get_count_users(session, date)
+        count_sellers = await SellerRepository.get_count_sellers(session, date)
         difference = count_subscribes - count_users
         if difference < 0:
             difference = 0
         admins = await UserRepository.get_admins(session, True)
-        date = datetime.today().date().strftime('%d-%m-%Y')
+        date_str = date.strftime('%d-%m-%Y')
         for admin in admins:
             with suppress(*(TelegramBadRequest, TelegramForbiddenError)):
                 picture = FSInputFile('static/start_pic.jpg')
-                text = (f"*Статистика на {date}*\n"
+                text = (f"*Статистика на {date_str}*\n"
                         f"Количество постов в группе - *{count_sellers}*\n"
                         f"Количество новых пользователей - *{difference}*")
                 await admin_bot.send_photo(chat_id=admin.id_telegram,
                                            photo=picture, parse_mode='Markdown',
                                            caption=text)
-        await SellerRepository.sellers_clear(count_subscribes, session)
+        await SellerRepository.create_instance_seller(session, count_subscribes, next_date)
+        date_expired = next_date - timedelta(days=14)
+        await SellerRepository.sellers_clear(date_expired, session)
 
 
 @logger.catch

@@ -50,7 +50,7 @@ class LiquidData:
 liquid_const = LiquidData()
 
 
-async def create_data_posts(session: async_session,
+async def create_data_posts(session: async_session, date,
                             today_count: int | None = None) -> list[dict[str: Any],]:
     """
     Функция для создания информации по количествам опубликованных постов
@@ -89,7 +89,7 @@ async def create_data_posts(session: async_session,
                 "need": dict_type_posts[index][1]
         })
     if today_count or today_count == 0:
-        post_by_sellers = await SellerRepository.get_count_sellers(session)
+        post_by_sellers = await SellerRepository.get_count_sellers(session, date)
         current_percent = min(int((today_count + post_by_sellers) / 200 * 100), 100)
         need_percent = max(100 - current_percent, 0)
         list_models.append({

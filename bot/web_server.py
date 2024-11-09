@@ -148,7 +148,7 @@ async def payment_post(request):
                                              url_message=url, method='money',
                                              url_message_main=url_main_theme,
                                              url_message_free=url_free_theme)
-            await SellerRepository.seller_add(session)
+            await SellerRepository.seller_add(session, date_public)
             await PostRepository.increment_liquid_posts(session, {'current_money': 1})
             await send_messages_for_admin(session, bot_admin, url, None)
         response_data = {'success': 'OK'}

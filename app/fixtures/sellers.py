@@ -1,6 +1,6 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
+import datetime
 
 async def create_sellers(session: AsyncSession):
     """
@@ -12,6 +12,6 @@ async def create_sellers(session: AsyncSession):
     if sellers:  # ликвидность уже задана
         return
 
-    seller_start = CountSellers(count=0, id=1)
+    seller_start = CountSellers(count=0, created_at=datetime.datetime.today().date())
     session.add(seller_start)
     await session.commit()

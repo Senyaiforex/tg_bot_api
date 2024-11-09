@@ -83,7 +83,7 @@ app.add_middleware(
         allow_methods=["GET", "POST", "OPTIONS", "DELETE", "PATCH", "PUT"],
         allow_headers=["Content-Type", "Ngrok-Skip-Browser-Warning", "User-Agent",
                        "Connection", "Set-Cookie", "Access-Control-Allow-Origin"
-                       "Access-Control-Allow-Headers", "Access-Control-Allow-Methods"],
+                                                   "Access-Control-Allow-Headers", "Access-Control-Allow-Methods"],
 )
 
 
@@ -265,7 +265,8 @@ async def get_count_members(session=Depends(get_async_session)):
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий количество продавцов sellers и покупателей buyers
     """
-    sellers = await SellerRepository.get_count_sellers(session)
+    date_today = datetime.today().date()
+    sellers = await SellerRepository.count_all_sellers(session)
     async with aiohttp.ClientSession() as session:
         response = await session.get('http://telegram_bot:8443/count_subscribed')
         content = await response.json()
@@ -287,7 +288,7 @@ async def get_count_posts_by_type(session=Depends(get_async_session)):
     """
     date_today = datetime.today().date()
     posts_today_count = await PostRepository.get_count_post_by_time(session, date_today)
-    data = await create_data_posts(session, posts_today_count[0])
+    data = await create_data_posts(session, date_today, posts_today_count[0])
 
     return [PostsByType(**inst) for inst in data]
 

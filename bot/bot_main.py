@@ -1,3 +1,4 @@
+import datetime
 import re
 import asyncio
 import emoji
@@ -828,6 +829,7 @@ async def public_post_in_channel(chat_id, photo_path, text, theme_id) -> str:
 
 @logger.catch
 async def public_and_create_post(session, callback_query, data, state, method):
+    date = datetime.today().date()
     user_id = callback_query.from_user.id
     username = callback_query.from_user.username
     text = await create_text_for_post(data)
@@ -855,7 +857,7 @@ async def public_and_create_post(session, callback_query, data, state, method):
         await create_post_user(session, bot, **dict_post_params,
                                active=True, url_message=url, url_message_free=url_free_theme,
                                url_message_main=url_main_theme)
-        await SellerRepository.seller_add(session)
+        await SellerRepository.seller_add(session, date)
         await PostRepository.increment_liquid_posts(session, {f'current_{method}': 1})
         await send_messages_for_admin(session, bot_admin, url, username)
     else:
@@ -901,7 +903,7 @@ async def public_and_update_post(session, callback_query, state, data, post):
                                          url_message=url, method=method, url_message_main=url_main_theme,
                                          url_message_free=url_free_theme)
         await PostRepository.increment_liquid_posts(session, {f'current_{method}': 1})
-        await SellerRepository.seller_add(session)
+        await SellerRepository.seller_add(session, date_public)
         await send_messages_for_admin(session, bot_admin, url, username)
     else:
         order = await OrderRepository.create_order(session, 1000, user_id, username, post.id)
@@ -986,7 +988,8 @@ async def handle_message(message: Message):
         if topic_number == 12955 and message.photo:
             async for session in get_async_session():
                 await PostRepository.increment_liquid_posts(session, {'current_free': 1})
-                await SellerRepository.seller_add(session)
+                date = datetime.today().date()
+                await SellerRepository.seller_add(session, date)
                 search_posts = await UserRepository.get_users_with_search(session)
                 url = f"https://t.me/Buyer_Marketplace/{topic_number}/{message.message_id}"
                 await notification(search_posts, message.caption, url, bot)
