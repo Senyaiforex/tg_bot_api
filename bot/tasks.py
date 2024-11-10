@@ -172,7 +172,7 @@ def setup_periodic_tasks(sender, **kwargs):
             check_tasks.s(), name='check_task-every-10-30'
     )
     sender.add_periodic_task(
-            crontab(hour=13, minute=30),
+            crontab(hour=23, minute=59),
             check_sellers.s(), name='clear_sellers-every-day'
     )
     sender.add_periodic_task(
