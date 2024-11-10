@@ -1011,22 +1011,30 @@ async def check_task_complete(telegram_id: int, task_id: int) -> bool:
     Функция для проверки выполнения задания
     """
     async for session in get_async_session():
-        user, task = await asyncio.gather(UserRepository.get_user_tg(telegram_id, session),
-                                          TaskRepository.get_task_by_id(task_id, session))
+        user = await UserRepository.get_user_with_tasks(telegram_id, session)
+        task = await TaskRepository.get_task_by_id(task_id, session)
+        # user, task = await asyncio.gather(UserRepository.get_user_tg(telegram_id, session),
+        #                                   TaskRepository.get_task_by_id(task_id, session))
         if task in user.tasks:
             return True
         if task.category_id == 2:
             if await is_user_subscribed(telegram_id, await get_channel_id_by_url(task.url)):
-                await asyncio.gather(TaskRepository.add_task(user, task, session),
-                                     PullRepository.update_pull(session, task.reward, 'current_tasks'),
-                                     user.update_count_coins(session, task.reward, 'Выполнение задания'))
+                await TaskRepository.add_task(user, task, session)
+                await PullRepository.update_pull(session, task.reward, 'current_tasks')
+                await user.update_count_coins(session, task.reward, 'Выполнение задания')
+                # await asyncio.gather(TaskRepository.add_task(user, task, session),
+                #                      PullRepository.update_pull(session, task.reward, 'current_tasks'),
+                #                      user.update_count_coins(session, task.reward, 'Выполнение задания'))
                 return True
             else:
                 return False
         else:  # Пока что возвращаем True для всех остальных задач
-            await asyncio.gather(TaskRepository.add_task(user, task, session),
-                                 PullRepository.update_pull(session, task.reward, 'current_tasks'),
-                                 user.update_count_coins(session, task.reward, 'Выполнение задания'))
+            await TaskRepository.add_task(user, task, session)
+            await PullRepository.update_pull(session, task.reward, 'current_tasks')
+            await user.update_count_coins(session, task.reward, 'Выполнение задания')
+            # await asyncio.gather(TaskRepository.add_task(user, task, session),
+            #                      PullRepository.update_pull(session, task.reward, 'current_tasks'),
+            #                      user.update_count_coins(session, task.reward, 'Выполнение задания'))
             return True
 
 
