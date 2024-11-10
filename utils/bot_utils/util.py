@@ -280,7 +280,7 @@ async def create_statistic_message(session: AsyncSession, bot: Bot) -> str:
             in dir(liquid_instance) if attr.startswith("current")
     )
     count_posts = await PostRepository.get_count_post_by_time(session, date)
-    sellers = await SellerRepository.get_count_sellers(session)
+    sellers = await SellerRepository.get_count_sellers(session, date)
     text = txt_adm.post_statistic.format(
             count_sbs=count_members,
             posts_month=count_month,
