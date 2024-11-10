@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime, timedelta
 import re
 import asyncio
 import emoji
@@ -989,8 +989,11 @@ async def handle_message(message: Message):
             async for session in get_async_session():
                 await PostRepository.increment_liquid_posts(session, {'current_free': 1})
                 date = datetime.today().date()
-                await SellerRepository.seller_add(session, date)
-                search_posts = await UserRepository.get_users_with_search(session)
+                logger.info(f"Обработка нового поста во всех категориях {date.strftime('%d-%m-%Y')}")
+                task_seller = asyncio.create_task(SellerRepository.seller_add(session, date))
+                task_search = asyncio.create_task(UserRepository.get_users_with_search(session))
+                await task_seller
+                search_posts = await task_search
                 url = f"https://t.me/Buyer_Marketplace/{topic_number}/{message.message_id}"
                 await notification(search_posts, message.caption, url, bot)
 
