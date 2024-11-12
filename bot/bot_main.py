@@ -3,14 +3,15 @@ import re
 import asyncio
 import emoji
 from aiogram import Bot, Dispatcher, F
-from aiogram.types import Message, FSInputFile, CallbackQuery, Chat
+from aiogram.types import Message, FSInputFile, CallbackQuery, Chat, LabeledPrice, PreCheckoutQuery
 from aiogram.filters import Command, CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 import functools
-from contextlib import suppress
+from contextlib import suppress, asynccontextmanager
 from dill.temp import capture
+from sqlalchemy.ext.asyncio import async_scoped_session
 
 from bot_admin import bot as bot_admin
 from payment import get_url_payment
@@ -42,6 +43,19 @@ async def get_async_session() -> async_session:
     async with async_session() as session:
         yield session
         await session.close()
+
+
+@asynccontextmanager
+async def scoped_session():
+    scoped_factory = async_scoped_session(
+            async_session,
+            scopefunc=asyncio.current_task,
+    )
+    try:
+        async with scoped_factory() as s:
+            yield s
+    finally:
+        await scoped_factory.remove()
 
 
 os.makedirs(MEDIA_DIR, exist_ok=True)
@@ -98,6 +112,58 @@ def subscribed_call(func):
 
     return wrapper
 
+@dp.message(F.content_type == "successful_payment")
+async def successful_payment_handler(message: Message, state: FSMContext):
+    """
+    Функция обработки успешной оплаты
+    """
+    transaction_id = message.successful_payment.telegram_payment_charge_id
+    data = await state.get_data()
+    previous_message_id = data.get('last_bot_message')
+    if previous_message_id:
+        await delete_message(message.bot, message.from_user.id, previous_message_id)
+    post_id = int(message.successful_payment.invoice_payload.split('_')[2])
+    async for session in get_async_session():
+        post = await PostRepository.get_post(session, post_id)
+        chat_id, theme_id = post.channel_id.split('_')
+        date_public = datetime.today().date()
+        date_expired = date_public + timedelta(days=7)
+        main_theme = int(theme_id) != 12955
+        free_theme = int(theme_id) != 325 and post.discount == 100
+        data = {'product_name': post.name,
+                'product_price': post.price,
+                'price_discount': post.discounted_price,
+                'product_marketplace': post.marketplace,
+                'account_url': post.account_url,
+                'discount_proc': post.discount
+                }
+        text = await create_text_for_post(data)
+        try:
+            url = await public_post_in_channel(chat_id, post.photo, text, theme_id)
+            if main_theme:
+                url_main_theme = await public_post_in_channel(chat_id, post.photo,
+                                                              text, 12955)
+            else:
+                url_main_theme = url
+            if free_theme:
+                url_free_theme = await public_post_in_channel(chat_id, post.photo,
+                                                              text, 325)
+            else:
+                url_free_theme = url
+        except Exception as ex:
+            await bot.refund_star_payment(message.from_user.id, transaction_id)
+            await message.answer('Что-то пошло не так! Попробуйте позже или обратитесь к администратору',
+                                 reply_markup=back_menu_user)
+            return
+        await message.answer(txt_us.post_success.format(url=url), reply_markup=back_menu_user)
+        await PostRepository.update_post(session, post.id, active=True,
+                                         date_expired=date_expired, date_public=date_public,
+                                         url_message=url, method='stars',
+                                         url_message_main=url_main_theme,
+                                         url_message_free=url_free_theme)
+        await SellerRepository.seller_add(session, date_public)
+        await PostRepository.increment_liquid_posts(session, {'current_stars': 1})
+        await send_messages_for_admin(session, bot_admin, url, None)
 
 @dp.message(Command("start"))
 @logger.catch
@@ -628,7 +694,7 @@ async def wait_url_post(message: Message, state: FSMContext) -> None:
                                         message_id=int(id_message))
     except (IndexError, TelegramBadRequest, TelegramForbiddenError) as ex:
         await message_answer_process(bot, message, state,
-                                     "Ваше сообщение не найдено или Вы отправили нам неправильный"
+                                     "Ваше сообщение не найдено или Вы отправили нам неправильный "
                                      "формат ссылки",
                                      back_menu_user)
     else:
@@ -839,6 +905,11 @@ async def public_and_create_post(session, callback_query, data, state, method):
     main_theme = int(theme_id) != 12955
     free_theme = int(theme_id) != 325 and int(data.get('discount_proc')) == 100
     if method != 'money':
+    if method == 'stars':
+        post_id = await create_post_user(session, bot, **dict_post_params)
+        await callback_query.message.delete()
+        await send_invoice_handler(callback_query, post_id, state)
+    elif method != 'money':
         url = await public_post_in_channel(chat_id, data.get('product_photo'),
                                            text, theme_id)
         if main_theme:
@@ -879,7 +950,11 @@ async def public_and_update_post(session, callback_query, state, data, post):
     main_theme = int(theme_id) != 12955
     free_theme = int(theme_id) != 325 and int(data.get('discount_proc')) == 100
     text = await create_text_for_post(data)
-    if method != 'money':
+    if method == 'stars':
+        logger.info(f"Публикация истекшего поста за звёзды")
+        await callback_query.message.delete()
+        await send_invoice_handler(callback_query, post.id, state)
+    elif method != 'money':
         url = await public_post_in_channel(chat_id, post.photo, text, theme_id)
         logger.info(f"Публикация поста - {url}")
         if main_theme:
@@ -936,7 +1011,6 @@ async def finish(callback_query: CallbackQuery, state: FSMContext) -> None:
                 await message_answer_process(bot, callback_query, state, txt_us.not_coins)
         else:
             await public_and_create_post(session, callback_query, data, state, method)
-    await state.clear()
 
 
 @dp.callback_query(lambda c: c.data.startswith('again'))
@@ -997,6 +1071,27 @@ async def handle_message(message: Message):
                 url = f"https://t.me/Buyer_Marketplace/{topic_number}/{message.message_id}"
                 await notification(search_posts, message.caption, url, bot)
 
+
+async def send_invoice_handler(callback_query: CallbackQuery, id_post: int, state: FSMContext):
+    prices = [LabeledPrice(label="XTR", amount=500)]
+    msg = await callback_query.message.answer_invoice(
+            title="Разместить пост",
+            description="Размещение поста в группе за 500 звёзд",
+            prices=prices,
+            provider_token="",
+            payload=f"public_post_{id_post}",
+            currency="XTR",
+            reply_markup=await payment_keyboard(),
+    )
+    await state.update_data(last_bot_message=msg.message_id)
+
+
+@dp.pre_checkout_query()
+async def pre_checkout_query_handler(pre_checkout_query: PreCheckoutQuery):
+    await pre_checkout_query.answer(ok=True, error_message="Ошибка оплаты")
+
+
+
 async def get_channel_id_by_url(url: str) -> str:
     """
     Функция получения ID канала по его url
@@ -1013,7 +1108,7 @@ async def check_task_complete(telegram_id: int, task_id: int) -> bool:
     async for session in get_async_session():
         user = await UserRepository.get_user_with_tasks(telegram_id, session)
         task = await TaskRepository.get_task_by_id(task_id, session)
-        # user, task = await asyncio.gather(UserRepository.get_user_tg(telegram_id, session),
+        # user, task = await asyncio.gather(UserRepository.get_user_with_tasks(telegram_id, session),
         #                                   TaskRepository.get_task_by_id(task_id, session))
         if task in user.tasks:
             return True
