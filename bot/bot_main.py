@@ -904,7 +904,6 @@ async def public_and_create_post(session, callback_query, data, state, method):
     dict_post_params['method'] = method
     main_theme = int(theme_id) != 12955
     free_theme = int(theme_id) != 325 and int(data.get('discount_proc')) == 100
-    if method != 'money':
     if method == 'stars':
         post_id = await create_post_user(session, bot, **dict_post_params)
         await callback_query.message.delete()
