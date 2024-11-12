@@ -1,5 +1,7 @@
 from aiogram.types import (ReplyKeyboardMarkup, KeyboardButton,
                            InlineKeyboardButton, InlineKeyboardMarkup)
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+
 from utils.bot_utils.text_static import catalog_list, channels
 
 group_url = 'https://t.me/Buyer_Marketplace'
@@ -89,15 +91,15 @@ async def public_keyboard():
                                       callback_data='add_post_free')]
     coins_post = [InlineKeyboardButton(text='Разместить пост за монеты',
                                        callback_data='add_post_coins')]
-    # tokens_post = [InlineKeyboardButton(text='Разместить пост за токены',
-    #                                     callback_data='add_post_token')]
+    stars_post = [InlineKeyboardButton(text='Разместить пост за звёзды',
+                                        callback_data='add_post_stars')]
     rub_post = [InlineKeyboardButton(text='Разместить пост за рубли',
                                      callback_data='add_post_money')]
     back_but = [InlineKeyboardButton(text='⬅️ Назад', callback_data='back_to_menu')]
     keyboard_inline = [
             free_post,
             coins_post,
-            # tokens_post,
+            stars_post,
             rub_post,
             back_but
     ]
@@ -190,15 +192,15 @@ async def my_post_public_keyboard(id_post: int):
                                       callback_data=f'again_free_{id_post}')]
     coins_post = [InlineKeyboardButton(text='Опубликовать за монеты 10 000 монет',
                                        callback_data=f'again_coins_{id_post}')]
-    # tokens_post = [InlineKeyboardButton(text='Разместить пост за токены',
-    #                                     callback_data='add_post_tokens')]
+    stars_post = [InlineKeyboardButton(text='Разместить пост за звёзды',
+                                         callback_data=f'again_stars_{id_post}')]
     rub_post = [InlineKeyboardButton(text='Опубликовать за рубли',
                                      callback_data=f'again_money_{id_post}')]
     back_but = [InlineKeyboardButton(text='⬅️ Назад', callback_data='back_to_menu')]
     keyboard_inline = [
             free_post,
             coins_post,
-            # tokens_post,
+            stars_post,
             rub_post,
             back_but
     ]
@@ -234,7 +236,11 @@ async def delete_message_keyboard(id_message):
             menu_button
     ])
     return keyboard
+async def payment_keyboard():
+    builder = InlineKeyboardBuilder()
+    builder.button(text=f"Оплатить 500 ⭐️", pay=True)
 
+    return builder.as_markup()
 
 menu_button = [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_menu")]
 back_menu_user = InlineKeyboardMarkup(inline_keyboard=[
