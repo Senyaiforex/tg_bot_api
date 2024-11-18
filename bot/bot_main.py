@@ -777,6 +777,13 @@ async def process_product_discount(message: Message, state: FSMContext) -> None:
     except (ValueError, AttributeError, TypeError) as ex:
         is_number = False
     text = dict_text[is_number]
+    if is_number and data.get('method') == 'free':
+        discount = int(100 - discount_price / price * 100)
+        if discount < 60:
+            await message_answer_process(bot, message, state,
+                                         'Вы не можете опубликовать этот пост бесплатно, '
+                                         'так как кэшбек составляет менее 60%.\n')
+            return
     await message_answer_process(bot, message, state, text, dict_keyboard[is_number])
     if is_number:
         await state.update_data(price_discount=discount_price,
