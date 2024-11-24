@@ -8,7 +8,7 @@ class ChangeCoins(BaseModel):
 
 class ChangeSpinners(BaseModel):
     amount: int = Field(gt=0, description='Количество спиннеров')
-    add: bool = Field(gt=0, description='Добавить или вычесть(True or False)')
+    add: bool = Field(description='Добавить или вычесть(True or False)')
 
 class ChangePharmd(BaseModel):
     amount: int = Field(gt=0, description='Количество фарма')
