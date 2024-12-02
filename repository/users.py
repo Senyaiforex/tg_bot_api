@@ -50,6 +50,12 @@ class UserRepository:
         return user
 
     @classmethod
+    async def get_total_coins(cls, session: async_session) -> int:
+        stmt = select(func.sum(User.count_coins))
+        total_coins = await session.execute(stmt)
+        return total_coins.scalar()
+
+    @classmethod
     async def get_user_by_username(cls, username: str, session: async_session) -> User:
         """
         Функция дял получения пользователя из базы данных по его юзернейму
@@ -89,7 +95,7 @@ class UserRepository:
         return user
 
     @classmethod
-    async def get_admins(cls, session: async_session, superuser: bool=False) -> list[User]:
+    async def get_admins(cls, session: async_session, superuser: bool = False) -> list[User]:
         """
         Метод для получения всех пользователей с user.admin == True
         из базы данных
@@ -131,6 +137,7 @@ class UserRepository:
         else:
             session.add(new_user)
         await session.commit()
+
     @classmethod
     async def delete_user_admin(cls, username: str, session: async_session) -> bool:
         """

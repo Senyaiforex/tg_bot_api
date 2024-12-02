@@ -361,6 +361,20 @@ async def plan_info(session: AsyncSession = Depends(get_async_session)):
     return plan_posts_liquid
 
 
+@app.get("/api/get_total_coins")
+@cache(expire=1800)
+async def get_total_all_coins(session=Depends(get_async_session)):
+    """
+    • Описание: Возвращает количество монет в обороте в приложении.\n
+    • Параметры:\n
+        ◦ Нет
+    • Ответ:\n
+        ◦ 200 OK: JSON объект, содержащий общее количество монет.\n
+    """
+    coins = await UserRepository.get_total_coins(session)
+    return JSONResponse(content={'total_all_coins': f'{coins}'})
+
+
 @app.post('/api/create_user', response_model=BaseUser)
 async def create_user(user: UserIn,
                       session: AsyncSession = Depends(get_async_session)):
