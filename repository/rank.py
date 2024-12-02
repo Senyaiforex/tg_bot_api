@@ -26,7 +26,7 @@ class RankRepository:
         :return: список рангов
         :rtype: list[Rank]
         """
-        list_levels_new_rank = [1, 11, 21, 31, 41, 51, 61, 71, 81, 91] # уровни, на которых достигается новый ранг
+        list_levels_new_rank = [2, 11, 21, 31, 41, 51, 61, 71, 81, 91] # уровни, на которых достигается новый ранг
         result = await session.execute(
                 select(Rank)
                 .where(Rank.id.in_(list_levels_new_rank))
