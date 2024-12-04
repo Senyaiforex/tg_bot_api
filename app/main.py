@@ -22,7 +22,7 @@ from repository import UserRepository, PostRepository, TaskRepository, PullRepos
 from database import engine, async_session, Base
 from fixtures import *
 from schemes import *
-from utils.app_utils.utils import create_data_posts, create_data_pull, create_data_liquid, get_friend_word
+from utils.app_utils.utils import create_data_posts, create_data_pull, create_data_liquid, get_friend_word, check_ton_info
 from fastapi_cache.backends.redis import RedisBackend
 from fastapi_cache import FastAPICache
 from fastapi_cache.decorator import cache
@@ -220,6 +220,17 @@ async def get_transactions(id_telegram: Annotated[int, Path(description="Telegra
     """
     transactions = await UserRepository.get_transactions_by_id(id_telegram, limit, offset, session)
     return transactions
+@app.get("/api/ton_info")
+async def get_ton_info(session=Depends(get_async_session)):
+    """
+    • Описание: Возвращает информацию о ТОНах на coinmarket.\n
+    • Параметры:\n
+        ◦ - нет\n
+    • Ответ:\n
+        ◦ 200 OK: JSON объект, содержащий информацию о ТОНах.\n
+    """
+    price, market_cap = await check_ton_info()
+    return JSONResponse(content={'price': price, 'market_cap': market_cap})
 
 
 @app.get('/api/check_task_complete/{id_telegram}/{id_task}')

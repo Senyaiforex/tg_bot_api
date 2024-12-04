@@ -1,4 +1,5 @@
 import math
+import os
 from datetime import datetime, date
 from typing import Any
 
@@ -254,3 +255,19 @@ async def get_friend_word(number: int) -> str:
         return "друзей"
     # Окончание по последней цифре
     return endings[number % 10]
+
+
+async def check_ton_info():
+    url = os.getenv("URL_TON_API")
+    api_key = os.getenv("KEY_API_TON")
+    async with aiohttp.ClientSession() as session:
+        response = await session.get(url, headers={'x-cmc_pro_api_key': api_key})
+        if response.status == 200:
+            data = await response.json()
+            complete = data
+            price = complete['data']['TON'][0]["quote"]["USD"]["price"]
+            market_cap = complete['data']['TON'][0]["quote"]["USD"]["market_cap"]
+            return price, market_cap
+        else:
+            return 0, 0
+
