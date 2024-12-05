@@ -1,10 +1,12 @@
 from datetime import datetime, timedelta
 
+from aiohttp.web_exceptions import HTTPException
 from celery.states import state
 
 import aiohttp_cors
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, MessageId
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, MessageId, \
+    LabeledPrice
 from aiohttp import web
 import asyncio
 
@@ -100,6 +102,29 @@ async def delete_mes(request):
 
 
 @logger.catch
+async def create_link_invoice(request):
+    """
+    Создать ссылку на оплату звёздами
+    """
+    logger.info(request)
+    data = await request.json()
+    amount = int(data.get('amount'))
+    user_id = int(data.get('user_id'))
+    try:
+        prices = [LabeledPrice(label="XTR", amount=amount)]
+        link_invoice = await bot.create_invoice_link(
+                title="Разместить пост",
+                description=f"Покупка {amount} звёзд",
+                prices=prices,
+                provider_token="",
+                payload=f"pay_stars_{user_id}",
+                currency="XTR", )
+        response_data = {'success': 'OK', 'link': link_invoice}
+        return web.json_response(response_data, status=200)
+    except Exception as exception:
+        return HTTPException()
+
+@logger.catch
 async def payment_post(request):
     """
     Функция, обрабатывающая оплату за размещение поста
@@ -162,6 +187,7 @@ app = web.Application()
 app.router.add_get('/check_task/{telegram_id}/{task_id}', check_task)
 app.router.add_get('/delete_message/{chat_id}/{id_message}', delete_mes)
 app.router.add_get('/count_subscribed', get_count_subscribed)
+app.router.add_post('/create_link_invoice', create_link_invoice)
 app.router.add_post('/payment', payment_post)
 cors = aiohttp_cors.setup(app
                           , defaults={
