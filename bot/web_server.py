@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta
 
 from aiohttp.web_exceptions import HTTPException
@@ -12,12 +13,14 @@ import asyncio
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from payment import get_url_payment
 from keyboards import back_keyboard, back_menu_user, menu_button
-from bot_main import check_task_complete, public_post_in_channel, bot
+from bot_main import check_task_complete, public_post_in_channel, bot, ton_url
 from loguru import logger
 from bot_admin import bot as bot_admin
 from database import async_session
-from repository import OrderRepository, PostRepository, SellerRepository
+from repository import OrderRepository, PostRepository, SellerRepository, UserRepository
+from repository.users import TransactionRepository
 from utils.bot_utils.messages import send_messages_for_admin
 from utils.bot_utils.util import create_text_for_post
 
@@ -106,7 +109,6 @@ async def create_link_invoice(request):
     """
     Создать ссылку на оплату звёздами
     """
-    logger.info(request)
     data = await request.json()
     amount = int(data.get('amount'))
     user_id = int(data.get('user_id'))
@@ -123,6 +125,41 @@ async def create_link_invoice(request):
         return web.json_response(response_data, status=200)
     except Exception as exception:
         return HTTPException()
+
+
+@logger.catch
+async def create_link_payment(request):
+    """
+    Создать ссылку на оплату рублями
+    """
+    data = await request.json()
+    amount = int(data.get('amount'))
+    user_id = int(data.get('user_id'))
+    type_payment = data.get('type_payment')
+    count_buy = int(data.get('count_buy'))
+    if str(os.getenv('DEBUG')) == 'True':
+        response_data = {'success': 'OK', 'link': 'www.testpayment.ru'}
+        return web.json_response(response_data, status=200)
+    async for session in get_async_session():
+        user = await UserRepository.get_user_tg(int(user_id), session)
+        if not user.user_name:
+            return HTTPException(text="The user does not have a username")
+        description = f"buy_stars_{count_buy}" if type_payment == "stars" else f"buy_ton_{count_buy}"
+        try:
+            order = await OrderRepository.create_order(session, amount,
+                                                       int(user_id),
+                                                       user.user_name,
+                                                       None,
+                                                       description)
+            description_payment = f"Покупка {count_buy} звёзд" \
+                if type_payment == "stars" else f"Покупка {count_buy} TON"
+            not_url = os.getenv("EXCHANGE_NOTIFICATION")
+            link_payment = await get_url_payment(order.id, amount, description_payment, not_url)
+            response_data = {'success': 'OK', 'link': link_payment}
+            return web.json_response(response_data, status=200)
+        except Exception as exception:
+            return HTTPException(text=str(exception))
+
 
 @logger.catch
 async def payment_post(request):
@@ -183,12 +220,68 @@ async def payment_post(request):
         return web.json_response(response_data, status=400)
 
 
+
+
+@logger.catch
+async def payment_currency_exchange(request):
+    """
+    Функция, обрабатывающая оплату за обмен валюты
+    """
+    data = await request.json()
+    order_id = int(data.get('OrderId', None))
+    async for session in get_async_session():
+        order = await OrderRepository.get_order(session, order_id)
+        description = order.description
+        user_id = order.user_telegram
+        user_name = order.user_name
+        amount = order.amount
+        if description.startswith('buy_stars'):
+            count_buy = description.split('_')[-1]
+            text_admin = (f"*Покупка валюты за {amount} рублей*\n "
+                          f"Telegram ID - {user_id}  никнейм - @{user_name}\n\n"
+                          f"Тип валюты - *Telegram Stars*\n"
+                          f"Количество - *{count_buy}*")
+            await send_messages_for_admin(session, bot_admin, None, user_name, text_admin)
+            await TransactionRepository.create_transaction(session, user_id, 'money', amount,
+                                                           'stars', count_buy)
+        elif description.startswith("buy_ton"):
+            count_buy = description.split('_')[-1]
+            text_admin = (f"*Покупка валюты за {amount} рублей*\n "
+                          f"Telegram ID - {user_id}  никнейм - @{user_name}\n\n"
+                          f"Тип валюты - *TON*\n"
+                          f"Количество - *{count_buy}*")
+            await send_messages_for_admin(session, bot_admin, None, user_name, text_admin)
+            await TransactionRepository.create_transaction(session, user_id, 'money', amount,
+                                                           'ton', count_buy)
+    response_data = {'success': 'OK'}
+    return web.json_response(response_data, status=200)
+
+
+@logger.catch
+async def send_admins_by_transactions(request):
+    """
+    Оповестить администраторов о совершённой транзакции
+    """
+    data = await request.json()
+    text = data.get('text')
+    username = data.get('username')
+    async for session in get_async_session():
+        await send_messages_for_admin(session, bot_admin, None, username, text)
+    response_data = {'success': 'OK'}
+    return web.json_response(response_data, status=200)
+
+
 app = web.Application()
 app.router.add_get('/check_task/{telegram_id}/{task_id}', check_task)
 app.router.add_get('/delete_message/{chat_id}/{id_message}', delete_mes)
 app.router.add_get('/count_subscribed', get_count_subscribed)
 app.router.add_post('/create_link_invoice', create_link_invoice)
 app.router.add_post('/payment', payment_post)
+app.router.add_post('/create_link_payment', create_link_payment)
+app.router.add_post('/currency-payment', payment_currency_exchange)
+app.router.add_post('/send_admins', send_admins_by_transactions)
+
+
 cors = aiohttp_cors.setup(app
                           , defaults={
             '*': aiohttp_cors.ResourceOptions(

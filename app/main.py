@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from models import users_tasks
 from models.tasks import CategoryTask
 from repository.rank import RankRepository
+from repository.users import TransactionRepository
 from utils.app_utils import check_task_complete, create_data_tasks
 from fastapi.params import Path, Annotated, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,7 +23,8 @@ from repository import UserRepository, PostRepository, TaskRepository, PullRepos
 from database import engine, async_session, Base
 from fixtures import *
 from schemes import *
-from utils.app_utils.utils import create_data_posts, create_data_pull, create_data_liquid, get_friend_word, check_ton_info
+from utils.app_utils.utils import create_data_posts, create_data_pull, create_data_liquid, get_friend_word, \
+    check_ton_info
 from fastapi_cache.backends.redis import RedisBackend
 from fastapi_cache import FastAPICache
 from fastapi_cache.decorator import cache
@@ -220,7 +222,10 @@ async def get_transactions(id_telegram: Annotated[int, Path(description="Telegra
     """
     transactions = await UserRepository.get_transactions_by_id(id_telegram, limit, offset, session)
     return transactions
+
+
 @app.get("/api/ton_info")
+@cache(expire=3600)
 async def get_ton_info(session=Depends(get_async_session)):
     """
     • Описание: Возвращает информацию о ТОНах на coinmarket.\n
@@ -231,6 +236,24 @@ async def get_ton_info(session=Depends(get_async_session)):
     """
     price, market_cap = await check_ton_info()
     return JSONResponse(content={'price': price, 'market_cap': market_cap})
+
+
+@app.get("/api/history_transactions/{id_telegram}", response_model=list[HistoryChangeTransactionOut])
+async def get_transactions(id_telegram: Annotated[int, Path(description="Telegram ID пользователя", gt=0)],
+                           limit: int = Query(default=30, description='Количество транзакций', gt=0),
+                           offset: int = Query(default=0, description='Пагинация'),
+                           session=Depends(get_async_session)):
+    """
+    • Описание: Возвращает все обменные транзакции пользователя.\n
+    • Параметры:\n
+        ◦ id_telegram (параметр пути, int): Telegram ID пользователя.\n
+        ◦ limit (параметр запроса, int): Лимит количества транзакций.\n
+        ◦ offset (параметр запроса, int): Пагинация.\n
+    • Ответ:\n
+        ◦ 200 OK: JSON объект, содержащий все обменные транзакции пользователя.\n
+    """
+    transactions = await TransactionRepository.get_change_transactions_by_id(id_telegram, limit, offset, session)
+    return transactions
 
 
 @app.get('/api/check_task_complete/{id_telegram}/{id_task}')
@@ -400,6 +423,42 @@ async def create_user(user: UserIn,
     return new_user
 
 
+@app.post('/api/add_transaction')
+async def add_change_transaction(id_telegram: int, transaction: AddTransaction,
+                                 session: AsyncSession = Depends(get_async_session)):
+    """
+    • Описание: Создание новой транзакции обмена валюты в базе данных.\n
+    • Параметры:\n
+        ◦ id_telegram (параметр пути, int): Telegram ID пользователя.\n
+        ◦ from_сurrency, from_amount, to_currency, to_amount (тело запроса, схема AddTransaction):
+        Данные для создания обменной транзакции.\n
+    • Ответ:\n
+        ◦ 200 OK.\n
+    """
+    transaction = await TransactionRepository.create_transaction(session, id_telegram,
+                                                                 transaction.from_сurrency,
+                                                                 transaction.from_amount,
+                                                                 transaction.to_currency,
+                                                                 transaction.to_amount)
+    user = await UserRepository.get_user_tg(id_telegram, session)
+    if transaction.to_currency == 'coins':
+        await user.update_count_coins(session, transaction.to_amount, "Покупка монет")
+    elif transaction.to_currency == 'vouchers':
+        user.vouchers += transaction.to_amount
+        await session.commit()
+    elif transaction.to_currency == 'stars' and transaction.from_amount == 'ton':
+        async with aiohttp.ClientSession() as session:
+            text_admin = (f"*Покупка валюты за {transaction.from_amount} TON*\n "
+                          f"Telegram ID - {user_id}  никнейм - @{user_name}\n\n"
+                          f"Тип валюты - *Telegram Stars*\n"
+                          f"Количество - *{transaction.to_amount}*")
+            data = {'user_id': user.id_telegram, 'username': user.user_name,
+                    'text': text_admin}
+            response = await session.post('http://telegram_bot:8443/send_admins',
+                                          json=data)
+    return transaction
+
+
 @app.patch('/api/change_coins/{id_telegram}')
 async def change_coins(id_telegram: int, data_new: ChangeCoins,
                        session: AsyncSession = Depends(get_async_session)):
@@ -458,7 +517,6 @@ async def delete_user(user: DeleteUser,
         ◦ id_telegram (тело запроса, схема DeleteUser): Данные пользователя для удаления.\n
     • Ответ:\n
         ◦ 200 OK: JSON объект, указывающий на успешное удаление.\n
-
     """
     user = await UserRepository.get_user_by_telegram_id(user.id_telegram, session)
     await session.delete(user)
@@ -472,13 +530,13 @@ async def clear_cache():
     return {"message": "Cache cleared"}
 
 
-def main():
-    config = uvicorn.Config(app, host="0.0.0.0", port=8000, workers=4, log_level="info")
-    server = uvicorn.Server(config)
-    try:
-        server.run()
-    except KeyboardInterrupt:
-        print("----Приложение было принудительно остановлено----")
+# def main():
+#     config = uvicorn.Config(app, host="0.0.0.0", port=8000, workers=4, log_level="info")
+#     server = uvicorn.Server(config)
+#     try:
+#         server.run()
+#     except KeyboardInterrupt:
+#         print("----Приложение было принудительно остановлено----")
 
 
 if __name__ == "__main__":

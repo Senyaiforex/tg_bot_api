@@ -129,15 +129,29 @@ async def message_answer_process(bot: Bot,
     await delete_list_messages(data, bot, user_id)
 
 
-async def send_messages_for_admin(session, bot, url_post, username):
+async def send_messages_for_admin(session, bot: Bot, url_post: str | None,
+                                  username: str | None, text_info: str | None=None) -> None:
+    """
+    Оповещение всех администраторов
+    :param session: Асинхронная сессия
+    :param bot: Инстанс бота
+    :param url_post: URL опубликованного поста(если есть)
+    :param username: Никнейм пользователя(если есть)
+    :param text_info: Текст для администраторов
+    :return: None
+    """
     admins = await UserRepository.get_admins(session)
-    text = f'От автора - @{username}' if username else ''
-    text = text.replace("_", "\_")
     for admin in admins:
         with suppress(*(TelegramBadRequest, TelegramForbiddenError)):
+            if not text_info and url_post:
+                text = f'От автора - @{username}' if username else ''
+                text = text.replace("_", "\_")
+                text = (f'Здравствуйте, администратор!\n'
+                        f'В группе публиковано новое объявление - [перейти]({url_post})\n') + text
+            else:
+                text = text_info
             await bot.send_message(admin.id_telegram,
-                                   text=f'Здравствуйте, администратор!\n'
-                                        f'В группе публиковано новое объявление - [перейти]({url_post})\n' + text,
+                                   text=text,
                                    parse_mode='Markdown')
 
 

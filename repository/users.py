@@ -3,7 +3,7 @@ from sqlalchemy import func
 from fastapi import HTTPException
 from sqlalchemy import select, delete
 from sqlalchemy.orm import joinedload, aliased, selectinload
-from models import User, HistoryTransaction, SearchPost, Post
+from models import User, HistoryTransaction, SearchPost, Post, ChangeTransaction
 from datetime import date, timedelta
 from database import async_session
 
@@ -577,3 +577,61 @@ class SearchListRepository:
         query = delete(SearchPost).where(SearchPost.id == search_id)
         await session.execute(query)
         await session.commit()
+
+
+class TransactionRepository:
+
+    @classmethod
+    async def get_change_transactions_by_id(cls, id_telegram: int, limit: int, offset: int,
+                                            session: async_session) -> List[ChangeTransaction]:
+        """
+        Получить все обменные транзакции пользователя по его id_telegram
+        Если такой пользователь не найден, вернёт 404
+        :param id_telegram: Айди телеграм пользователя
+        :param limit: Максимальное количество
+        :param offset: Параметр пагинации
+        :param session: Асинхронная сессия
+        :return: Список транзакций
+        :rtype: list[ChangeTransaction]
+        """
+        user = await session.execute(
+                select(User).where(User.id_telegram == id_telegram)
+        )
+        user = user.scalars().first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        result = await session.execute(
+                select(ChangeTransaction)
+                .where(ChangeTransaction.user_id == user.id)
+                .order_by(ChangeTransaction.transaction_date.desc())
+                .limit(limit)
+                .offset(offset)
+        )
+        transactions = result.scalars().all()
+        return transactions
+
+    @classmethod
+    async def create_transaction(cls, session: async_session, id_telegram: int,
+                                 from_сurrency: str, from_amount: int,
+                                 to_currency: str, to_amount: int) -> ChangeTransaction:
+        """
+        Создание транзакции в базе
+        :param session: Асинхронная сессия
+        :param id_telegram: Айди телеграм пользователя
+        :param from_сurrency: Валюта отправителя
+        """
+        user = await session.execute(
+                select(User)
+                .where(User.id_telegram == id_telegram)
+        )
+        user = user.scalars().first()
+        transaction = ChangeTransaction(
+                user_id=user.id,
+                from_сurrency=from_сurrency,
+                from_amount=from_amount,
+                to_currency=to_currency,
+                to_amount=to_amount
+        )
+        session.add(transaction)
+        await session.commit()
+        return transaction

@@ -1,7 +1,7 @@
 from datetime import datetime
 from functools import wraps
 
-from sqlalchemy import Column, String, Integer, Table, ForeignKey, Date, DateTime, Boolean, select, BigInteger
+from sqlalchemy import Column, String, Integer, Table, ForeignKey, Date, DateTime, Boolean, select, BigInteger, Float
 from sqlalchemy.orm import relationship
 from database import Base, async_session
 from .posts import Post
@@ -96,6 +96,8 @@ class User(Base):
     registration_date = Column(Date, default=datetime.utcnow)
     history_transactions = relationship("HistoryTransaction",
                                         backref='user')
+    changes_transactions = relationship("ChangeTransaction",
+                                        backref='user')
     posts = relationship("Post", backref='user')
     active = Column(Boolean, default=1)
     admin = Column(Boolean, default=0)
@@ -119,6 +121,7 @@ class User(Base):
     search_posts = relationship('SearchPost',
                                 backref='user'
                                 )
+    vouchers = Column(Integer, default=0, comment='Количество купленных ваучеров')
 
     @rank_updater
     async def update_count_coins(self, session: async_session, amount: int,
@@ -159,6 +162,22 @@ class HistoryTransaction(Base):
     change_amount = Column(Integer, nullable=False)
     description = Column(String, nullable=False)
     add = Column(Boolean, nullable=True, default=True)
+    transaction_date = Column(DateTime,
+                              default=datetime.utcnow,
+                              nullable=False)
+
+
+class ChangeTransaction(Base):
+    """
+    Модель транзакции при обменах валюты
+    """
+    __tablename__ = 'changes_transactions'
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.id'))
+    from_сurrency = Column(String, nullable=False)
+    from_amount = Column(Float, nullable=False)
+    to_currency = Column(String, nullable=False)
+    to_amount = Column(Float, nullable=False)
     transaction_date = Column(DateTime,
                               default=datetime.utcnow,
                               nullable=False)

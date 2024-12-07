@@ -27,7 +27,7 @@ from utils.bot_utils.util import *
 
 MEDIA_DIR = 'media'
 MAX_SIZE_FILE = int(1.5 * 1024 * 1024)
-
+ton_url = os.getenv("PAY_NOTIFICATION")
 logger.add("logs/logs_bot/log_file.log",
            retention="5 days",
            rotation='19:00',
@@ -112,6 +112,7 @@ def subscribed_call(func):
 
     return wrapper
 
+
 @dp.message(F.content_type == "successful_payment")
 async def successful_payment_handler(message: Message, state: FSMContext):
     """
@@ -165,6 +166,7 @@ async def successful_payment_handler(message: Message, state: FSMContext):
         await PostRepository.increment_liquid_posts(session, {'current_stars': 1})
         await send_messages_for_admin(session, bot_admin, url, None)
 
+
 @dp.message(Command("start"))
 @logger.catch
 async def start(message: Message, command: CommandObject, state: FSMContext) -> None:
@@ -209,7 +211,6 @@ async def start(message: Message, command: CommandObject, state: FSMContext) -> 
             await handle_invitation(inviter_id, user_id, username, session)
         else:
             await UserRepository.create_user_tg(user_id, username, session)
-
 
 
 @dp.message(F.text == "⬅️ Назад")
@@ -939,8 +940,10 @@ async def public_and_create_post(session, callback_query, data, state, method):
         await send_messages_for_admin(session, bot_admin, url, username)
     else:
         post_id = await create_post_user(session, bot, **dict_post_params)
-        order = await OrderRepository.create_order(session, 1000, user_id, username, post_id)
-        payment_url = await get_url_payment(order.id, 1000, "Размещение поста в группе")
+        order = await OrderRepository.create_order(session, 1000, user_id, username, post_id,
+                                                   f'post_public_{post_id}')
+        payment_url = await get_url_payment(order.id, 1000,
+                                            "Размещение поста в группе", ton_url)
         logger.info(f"Публикация нового поста за рубли. Пост - {post_id} Заказ - {order}. Ссылка -  {payment_url}")
         await message_answer_process(bot, callback_query, state, txt_us.post_payment.format(url=payment_url))
 
@@ -987,8 +990,10 @@ async def public_and_update_post(session, callback_query, state, data, post):
         await SellerRepository.seller_add(session, date_public)
         await send_messages_for_admin(session, bot_admin, url, username)
     else:
-        order = await OrderRepository.create_order(session, 1000, user_id, username, post.id)
-        payment_url = await get_url_payment(order.id, 1000, "Размещение поста в группе")
+        order = await OrderRepository.create_order(session, 1000, user_id, username, post.id,
+                                                   f'post_public_{post.id}')
+        payment_url = await get_url_payment(order.id, 1000,
+                                            "Размещение поста в группе", ton_url)
         logger.info(f"Публикация истекшего поста за рубли Заказ - {order}. Ссылка -  {payment_url}")
         await message_answer_process(bot, callback_query, state, txt_us.post_payment.format(url=payment_url))
 
@@ -1095,7 +1100,6 @@ async def send_invoice_handler(callback_query: CallbackQuery, id_post: int, stat
 @dp.pre_checkout_query()
 async def pre_checkout_query_handler(pre_checkout_query: PreCheckoutQuery):
     await pre_checkout_query.answer(ok=True, error_message="Ошибка оплаты")
-
 
 
 async def get_channel_id_by_url(url: str) -> str:

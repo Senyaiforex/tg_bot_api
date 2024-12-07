@@ -43,9 +43,9 @@ class ChangeCountFriends(BaseModel):
 
 class AddTransaction(BaseModel):
     from_сurrency: str
-    from_amount: int
+    from_amount: int | float
     to_currency: str
-    to_amount: int
+    to_amount: int | float
 
 
 class HistoryChangeTransactionOut(BaseModel):
