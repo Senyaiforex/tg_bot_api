@@ -5,3 +5,4 @@ testfile.py
 /dev/
 redis.conf
 prod
+database.py
