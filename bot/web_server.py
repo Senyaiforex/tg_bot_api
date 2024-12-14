@@ -115,7 +115,7 @@ async def create_link_invoice(request):
     try:
         prices = [LabeledPrice(label="XTR", amount=amount)]
         link_invoice = await bot.create_invoice_link(
-                title="Разместить пост",
+                title="Обмен валюты",
                 description=f"Покупка {amount} звёзд",
                 prices=prices,
                 provider_token="",
@@ -220,8 +220,6 @@ async def payment_post(request):
         return web.json_response(response_data, status=400)
 
 
-
-
 @logger.catch
 async def payment_currency_exchange(request):
     """
@@ -281,14 +279,16 @@ app.router.add_post('/create_link_payment', create_link_payment)
 app.router.add_post('/currency-payment', payment_currency_exchange)
 app.router.add_post('/send_admins', send_admins_by_transactions)
 
-
 cors = aiohttp_cors.setup(app
                           , defaults={
             '*': aiohttp_cors.ResourceOptions(
                     allow_credentials=True,
+                    allow_methods=["GET", "POST", "OPTIONS", "DELETE", "PATCH", "PUT"],
+                    allow_headers=["Content-Type", "Ngrok-Skip-Browser-Warning", "User-Agent",
+                                   "Connection", "Set-Cookie", "Access-Control-Allow-Origin"
+                                                               "Access-Control-Allow-Headers",
+                                   "Access-Control-Allow-Methods"],
                     expose_headers='*',
-                    allow_headers='*',
-                    allow_methods='*',
             )
     })
 
