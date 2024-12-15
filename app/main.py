@@ -423,8 +423,9 @@ async def create_user(user: UserIn,
     return new_user
 
 
-@app.post('/api/add_transaction')
-async def add_change_transaction(id_telegram: int, transaction: AddTransaction,
+@app.post('/api/add_transaction/{id_telegram}/')
+async def add_change_transaction(id_telegram: Annotated[int, Path(description="Telegram ID пользователя", gt=0)],
+                                 transaction: AddTransaction,
                                  session: AsyncSession = Depends(get_async_session)):
     """
     • Описание: Создание новой транзакции обмена валюты в базе данных.\n
@@ -436,7 +437,7 @@ async def add_change_transaction(id_telegram: int, transaction: AddTransaction,
         ◦ 200 OK.\n
     """
     transaction = await TransactionRepository.create_transaction(session, id_telegram,
-                                                                 transaction.from_сurrency,
+                                                                 transaction.from_currency,
                                                                  transaction.from_amount,
                                                                  transaction.to_currency,
                                                                  transaction.to_amount)

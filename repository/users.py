@@ -612,7 +612,7 @@ class TransactionRepository:
 
     @classmethod
     async def create_transaction(cls, session: async_session, id_telegram: int,
-                                 from_сurrency: str, from_amount: int,
+                                 from_currency: str, from_amount: int,
                                  to_currency: str, to_amount: int) -> ChangeTransaction:
         """
         Создание транзакции в базе
@@ -627,7 +627,7 @@ class TransactionRepository:
         user = user.scalars().first()
         transaction = ChangeTransaction(
                 user_id=user.id,
-                from_currency=from_сurrency,
+                from_currency=from_currency,
                 from_amount=from_amount,
                 to_currency=to_currency,
                 to_amount=to_amount
