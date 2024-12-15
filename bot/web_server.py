@@ -283,11 +283,8 @@ cors = aiohttp_cors.setup(app
                           , defaults={
             '*': aiohttp_cors.ResourceOptions(
                     allow_credentials=True,
-                    allow_methods=["GET", "POST", "OPTIONS", "DELETE", "PATCH", "PUT"],
-                    allow_headers=["Content-Type", "Ngrok-Skip-Browser-Warning", "User-Agent",
-                                   "Connection", "Set-Cookie", "Access-Control-Allow-Origin"
-                                                               "Access-Control-Allow-Headers",
-                                   "Access-Control-Allow-Methods"],
+                    allow_methods='*',
+                    allow_headers='*',
                     expose_headers='*',
             )
     })
