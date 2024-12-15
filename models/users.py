@@ -174,7 +174,7 @@ class ChangeTransaction(Base):
     __tablename__ = 'changes_transactions'
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey('users.id'))
-    from_сurrency = Column(String, nullable=False)
+    from_currency = Column(String, nullable=False)
     from_amount = Column(Float, nullable=False)
     to_currency = Column(String, nullable=False)
     to_amount = Column(Float, nullable=False)

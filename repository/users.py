@@ -627,7 +627,7 @@ class TransactionRepository:
         user = user.scalars().first()
         transaction = ChangeTransaction(
                 user_id=user.id,
-                from_сurrency=from_сurrency,
+                from_currency=from_сurrency,
                 from_amount=from_amount,
                 to_currency=to_currency,
                 to_amount=to_amount

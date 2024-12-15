@@ -51,7 +51,7 @@ class AddTransaction(BaseModel):
 class HistoryChangeTransactionOut(BaseModel):
     id: int = Field(..., description='ID транзакции')
     transaction_date: datetime | str = Field(..., description='Дата транзакции')
-    from_сurrency: str
+    from_currency: str
     from_amount: int
     to_currency: str
     to_amount: int
