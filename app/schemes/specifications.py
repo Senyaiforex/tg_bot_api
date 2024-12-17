@@ -52,9 +52,9 @@ class HistoryChangeTransactionOut(BaseModel):
     id: int = Field(..., description='ID транзакции')
     transaction_date: datetime | str = Field(..., description='Дата транзакции')
     from_currency: str
-    from_amount: int
+    from_amount: int | float
     to_currency: str
-    to_amount: int
+    to_amount: int | float
 
     @field_validator('transaction_date', mode='before')
     def format_transaction_date(cls, v):
