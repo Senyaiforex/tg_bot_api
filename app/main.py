@@ -224,7 +224,7 @@ async def get_transactions(id_telegram: Annotated[int, Path(description="Telegra
     return transactions
 
 
-@app.get("/api/ton_info")
+@app.get("/api/crypto_info")
 @cache(expire=3600)
 async def get_ton_info(session=Depends(get_async_session)):
     """
@@ -234,8 +234,9 @@ async def get_ton_info(session=Depends(get_async_session)):
     • Ответ:\n
         ◦ 200 OK: JSON объект, содержащий информацию о ТОНах.\n
     """
-    price, market_cap = await check_ton_info()
-    return JSONResponse(content={'price': price, 'market_cap': market_cap})
+    price, market_cap, usdt_to_ton, usdt_to_rub = await check_ton_info()
+    return JSONResponse(content={'price': price, 'market_cap': market_cap,
+                                 'usdt_to_ton': usdt_to_ton, 'usdt_to_rub': usdt_to_rub})
 
 
 @app.get("/api/history_transactions/{id_telegram}", response_model=list[HistoryChangeTransactionOut])

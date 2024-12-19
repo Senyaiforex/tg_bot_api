@@ -1,3 +1,4 @@
+import asyncio
 import math
 import os
 from datetime import datetime, date
@@ -261,13 +262,18 @@ async def check_ton_info():
     url = os.getenv("URL_TON_API")
     api_key = os.getenv("KEY_API_TON")
     async with aiohttp.ClientSession() as session:
-        response = await session.get(url, headers={'x-cmc_pro_api_key': api_key})
-        if response.status == 200:
-            data = await response.json()
-            complete = data
-            price = complete['data']['TON'][0]["quote"]["USD"]["price"]
-            market_cap = complete['data']['TON'][0]["quote"]["USD"]["market_cap"]
-            return price, market_cap
+        ton, usdt_to_rub, usdt_to_ton  = await asyncio.gather(
+            session.get(url + 'symbol=TON', headers={'x-cmc_pro_api_key': api_key}),
+            session.get(url + 'symbol=USDT&convert=RUB', headers={'x-cmc_pro_api_key': api_key}),
+            session.get(url + 'symbol=USDT&convert=TON', headers={'x-cmc_pro_api_key': api_key}))
+        if all((ton.status == 200,
+                usdt_to_rub.status == 200,
+                usdt_to_ton.status == 200)):
+            data_ton, data_usdt, data_rub = await asyncio.gather(ton.json(), usdt_to_ton.json(), usdt_to_rub.json())
+            price = data_ton['data']['TON'][0]["quote"]["USD"]["price"]
+            market_cap = data_ton['data']['TON'][0]["quote"]["USD"]["market_cap"]
+            usdt_to_ton = data_usdt['data']['USDT'][0]["quote"]["TON"]["price"]
+            usdt_to_rub = data_rub['data']['USDT'][0]["quote"]["RUB"]["price"]
+            return price, market_cap, usdt_to_ton, usdt_to_rub
         else:
             return 0, 0
-
