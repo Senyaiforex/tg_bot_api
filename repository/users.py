@@ -513,6 +513,19 @@ class UserRepository:
         )
         users = query_users.unique().scalars().all()
         return users
+    @classmethod
+    async def get_sum_vouchers(cls, session):
+        """
+        Получить сумму ваучеров пользователей
+        :param session: Асинхронная сессия
+        :return: Сумма ваучеров
+        :rtype: int
+        """
+        result = await session.execute(
+                select(func.sum(User.vouchers)).where(User.active == True)
+        )
+        voucher_sum = result.scalar()
+        return voucher_sum
 
 
 class SearchListRepository:

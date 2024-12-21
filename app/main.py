@@ -224,19 +224,54 @@ async def get_transactions(id_telegram: Annotated[int, Path(description="Telegra
     return transactions
 
 
-@app.get("/api/crypto_info")
+@app.get("/api/crypto_info/{id_telegram}")
 @cache(expire=3600)
-async def get_ton_info(session=Depends(get_async_session)):
+async def get_ton_info(id_telegram: Annotated[int, Path(description="Telegram ID пользователя", gt=0)],
+                       session=Depends(get_async_session)):
     """
-    • Описание: Возвращает информацию о ТОНах на coinmarket.\n
+    • Описание: Возвращает информацию о токеномике на проекте.\n
     • Параметры:\n
-        ◦ - нет\n
+        ◦ id_telegram (параметр пути, int): Telegram ID пользователя.\n
     • Ответ:\n
-        ◦ 200 OK: JSON объект, содержащий информацию о ТОНах.\n
+        ◦ 200 OK: JSON объект, содержащий информацию о токеномике.\n
     """
+    all_count_tokens = 100_000_000
     price, market_cap, usdt_to_ton, usdt_to_rub = await check_ton_info()
-    return JSONResponse(content={'price': price, 'market_cap': market_cap,
-                                 'usdt_to_ton': usdt_to_ton, 'usdt_to_rub': usdt_to_rub})
+    user = await UserRepository.get_user_tg(id_telegram, session)
+    all_vouchers = await UserRepository.get_sum_vouchers(session)
+    user_share_project = round(user.vouchers / all_count_tokens * 100, 4)
+    ton_to_usdt = price
+    ton_to_rub = ton_to_usdt * usdt_to_rub * 1.1
+    voucher_to_usdt = 0.02
+    voucher_to_ton = 0.02 * ton_to_usdt
+    stages = [{"text": "1 этап: 10 000 000 токенов по $ 0.02",
+               "isActive": False,
+               "progress": 0},
+              {"text": "2 этап: 10 000 000 токенов по $ 0.04",
+               "isActive": False,
+               "progress": 0},
+              {"text": "3 этап: 10 000 000 токенов по $ 0.06",
+               "isActive": False,
+               "progress": 0},
+              ]
+    if all_vouchers <= 10_000_000:
+        stages[0]["isActive"] = True
+        stages[0]["progress"] = round((all_vouchers / 10_000_000 * 100), 2)
+    elif 10_000_000 < all_vouchers <= 20_000_000:
+        stages[1]["isActive"] = True
+        stages[1]["progress"] = round(((all_vouchers - 10_000_000) / 10_000_000 * 100), 2)
+    elif 20_000_000 < all_vouchers <= 30_000_000:
+        stages[2]["isActive"] = True
+        stages[2]["progress"] = round(((all_vouchers - 20_000_000) / 10_000_000 * 100), 2)
+    result_dict = {"ton": {"ton_to_usdt": ton_to_usdt,
+                           "ton_to_rub": ton_to_rub,
+                           "ton_market_cap": market_cap},
+                   "vouchers": {"voucher_to_usdt": voucher_to_usdt,
+                                "voucher_to_ton": voucher_to_ton},
+                   "user_pull": {"all_tokens": all_count_tokens,
+                                 "share_in_project": user_share_project},
+                   "stages": stages}
+    return JSONResponse(content=result_dict)
 
 
 @app.get("/api/history_transactions/{id_telegram}", response_model=list[HistoryChangeTransactionOut])
