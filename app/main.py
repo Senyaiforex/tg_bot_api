@@ -483,7 +483,10 @@ async def add_change_transaction(id_telegram: Annotated[int, Path(description="T
                                                                  transaction.to_amount)
     user = await UserRepository.get_user_tg(id_telegram, session)
     if transaction.to_currency == 'coins':
-        await user.update_count_coins(session, transaction.to_amount, "Покупка монет")
+        user.count_coins += transaction.to_amount
+        user.total_coins += transaction.to_amount
+        await session.commit()
+        await PullRepository.update_pull(session, transaction.to_amount, "current_coins")
     elif transaction.to_currency == 'vouchers':
         user.vouchers += transaction.to_amount
         await session.commit()
@@ -497,6 +500,7 @@ async def add_change_transaction(id_telegram: Annotated[int, Path(description="T
                     'text': text_admin}
             response = await session.post('http://telegram_bot:8443/send_admins',
                                           json=data)
+    await user.update_count_coins(session, 1000, "Бонус за покупку валюты")
     return transaction
 
 

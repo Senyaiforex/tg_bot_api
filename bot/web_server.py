@@ -251,6 +251,8 @@ async def payment_currency_exchange(request):
             await send_messages_for_admin(session, bot_admin, None, user_name, text_admin)
             await TransactionRepository.create_transaction(session, user_id, 'money', amount,
                                                            'ton', count_buy)
+        user = await UserRepository.get_user_tg(user_id, session)
+        await user.update_count_coins(session, 1000, "Бонус за покупку валюты")
     response_data = {'success': 'OK'}
     return web.json_response(response_data, status=200)
 
