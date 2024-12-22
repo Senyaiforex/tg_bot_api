@@ -243,7 +243,7 @@ async def get_ton_info(id_telegram: Annotated[int, Path(description="Telegram ID
     ton_to_usdt = price
     ton_to_rub = ton_to_usdt * usdt_to_rub * 1.1
     voucher_to_usdt = 0.02
-    voucher_to_ton = 0.02 * ton_to_usdt
+    voucher_to_ton = 0.02 / ton_to_usdt
     stages = [{"text": "1 этап: 10 000 000 токенов по $ 0.02",
                "isActive": False,
                "progress": 0},
@@ -266,8 +266,12 @@ async def get_ton_info(id_telegram: Annotated[int, Path(description="Telegram ID
     result_dict = {"ton": {"ton_to_usdt": ton_to_usdt,
                            "ton_to_rub": ton_to_rub,
                            "ton_market_cap": market_cap},
-                   "vouchers": {"voucher_to_usdt": voucher_to_usdt,
+                   "voucher": {"voucher_to_usdt": voucher_to_usdt,
                                 "voucher_to_ton": voucher_to_ton},
+                   "stars": {"stars_to_ton": 0.034,
+                             "stars_to_rub": 2},
+                   "coins": {"coins_to_ton": 0.00002,
+                             "coins_to_stars": 0.0075},
                    "user_pull": {"all_tokens": all_count_tokens,
                                  "share_in_project": user_share_project},
                    "stages": stages}

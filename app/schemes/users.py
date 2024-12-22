@@ -62,6 +62,7 @@ class UserOut(BaseUser):
     )
     count_tasks: int = Field(default=0, description='Количество выполненных задач')
     rank: Rank
+    vouchers: int = Field(default=0, description='Количество ваучеров у пользователя')
     # next_level_coins: int = Field(
     #         description='Количество монет, необходимых для следующего уровня'
     # )
