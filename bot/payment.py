@@ -1,6 +1,6 @@
 from tinkoff_acquiring_api import TinkoffAcquiring
 import os
-terminal = os.getenv("PAY_TERMINAL")
+terminal = str(os.getenv("PAY_TERMINAL"))
 secret = os.getenv("PAY_SECRET")
 req = TinkoffAcquiring(terminal=terminal, secret_key=terminal)
 
