@@ -154,7 +154,7 @@ async def create_link_payment(request):
             description_payment = f"Покупка {count_buy} звёзд" \
                 if type_payment == "stars" else f"Покупка {count_buy} TON"
             not_url = os.getenv("EXCHANGE_NOTIFICATION")
-            link_payment = await get_url_payment(order.id, amount, description_payment, not_url)
+            link_payment = await get_url_payment(order.id, amount, description_payment, not_url, bot)
             response_data = {'success': 'OK', 'link': link_payment}
             return web.json_response(response_data, status=200)
         except Exception as exception:
