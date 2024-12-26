@@ -240,6 +240,8 @@ async def get_ton_info(id_telegram: Annotated[int, Path(description="Telegram ID
     user = await UserRepository.get_user_tg(id_telegram, session)
     all_vouchers = await UserRepository.get_sum_vouchers(session)
     user_share_project = round(user.vouchers / all_count_tokens * 100, 3)
+    if user_share_project < 0.00001 and user_share_project > 0:
+        user_share_project = 0.00001
     ton_to_usdt = price
     ton_to_rub = ton_to_usdt * usdt_to_rub * 1.1
     voucher_to_usdt = 0.02
