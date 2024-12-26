@@ -158,6 +158,7 @@ async def create_link_payment(request):
             response_data = {'success': 'OK', 'link': link_payment}
             return web.json_response(response_data, status=200)
         except Exception as exception:
+            logger.error(str(exception), exc_info=True)
             return HTTPException(text=str(exception))
 
 
