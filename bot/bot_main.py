@@ -10,7 +10,6 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 import functools
 from contextlib import suppress, asynccontextmanager
-from dill.temp import capture
 from sqlalchemy.ext.asyncio import async_scoped_session
 
 from bot_admin import bot as bot_admin

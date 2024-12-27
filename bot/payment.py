@@ -1,9 +1,9 @@
 from tinkoff_acquiring_api import TinkoffAcquiring
 import os
+
 terminal = str(os.getenv("PAY_TERMINAL"))
 secret = os.getenv("PAY_SECRET")
-req = TinkoffAcquiring(terminal=terminal, secret_key=terminal)
-
+req = TinkoffAcquiring(terminal=terminal, secret_key=secret)
 
 async def get_url_payment(order_id: int, amount: int, description: str,
                           pay_notification: str):
