@@ -6,7 +6,7 @@ from database import async_session
 class OrderRepository:
     @classmethod
     async def create_order(cls, session: async_session, amount: int, user_id: int,
-                           username: str, post_id: int | None, description: str) -> Order:
+                           username: str, post_id: int | None, description: str = None) -> Order:
         """
         Метод для создания нового заказа
         для оплаты публикации поста
@@ -19,7 +19,7 @@ class OrderRepository:
         :rtype: Order
         """
         new_order = Order(amount=amount, user_telegram=user_id,
-                          post_id=post_id, user_name=username)
+                          post_id=post_id, user_name=username, description=description)
         session.add(new_order)
         await session.commit()
         await session.refresh(new_order)
