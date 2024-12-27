@@ -26,8 +26,8 @@ class Rank(BaseModel):
 
     @model_validator(mode='before')
     def set_rank_name(cls, values):
-        rank = values.get("rank").name
-        values["rank_name"] = dict_rank_names[rank]
+        rank = values.rank.name
+        values.rank_name = dict_rank_names[rank]
         return values
 
     class Config:
@@ -53,8 +53,8 @@ class RankInfoOut(BaseModel):
 
     @model_validator(mode='before')
     def set_rank_name(cls, values):
-        rank = values.get("rank").name
-        values["rank_name"] = dict_rank_names[rank]
+        rank = values.rank.name
+        values.rank_name = dict_rank_names[rank]
         return values
 
 class RankOutInfo(BaseModel):
@@ -70,8 +70,8 @@ class RankOutInfo(BaseModel):
 
     @model_validator(mode='before')
     def set_rank_name(cls, values):
-        rank = values.get("rank").name
-        values["rank_name"] = dict_rank_names[rank]
+        rank = values.rank.name
+        values.rank_name = dict_rank_names[rank]
         return values
 
     class Config:
