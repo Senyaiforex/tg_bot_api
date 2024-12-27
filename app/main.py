@@ -239,9 +239,9 @@ async def get_ton_info(id_telegram: Annotated[int, Path(description="Telegram ID
     price, market_cap, usdt_to_ton, usdt_to_rub = await check_ton_info()
     user = await UserRepository.get_user_tg(id_telegram, session)
     all_vouchers = await UserRepository.get_sum_vouchers(session)
-    user_share_project = round(user.vouchers / all_count_tokens * 100, 3)
-    if user_share_project < 0.00001 and user_share_project > 0:
-        user_share_project = 0.00001
+    user_share_project = round(user.vouchers / all_count_tokens * 100, 6)
+    if user_share_project < 0.000001 and user_share_project > 0:
+        user_share_project = 0.000001
     ton_to_usdt = price
     ton_to_rub = ton_to_usdt * usdt_to_rub * 1.1
     voucher_to_usdt = 0.02
@@ -272,7 +272,7 @@ async def get_ton_info(id_telegram: Annotated[int, Path(description="Telegram ID
                                 "vouchers_to_ton": voucher_to_ton},
                    "stars": {"stars_to_ton": 0.034,
                              "stars_to_rub": 2},
-                   "coins": {"coins_to_ton": 0.00002,
+                   "coins": {"coins_to_ton": float(0.00002),
                              "coins_to_stars": 0.0075},
                    "user_pull": {"all_tokens": all_count_tokens,
                                  "share_in_project": user_share_project},
