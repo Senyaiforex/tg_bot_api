@@ -54,8 +54,8 @@ class RankInfoOut(BaseModel):
 
     @model_validator(mode='before')
     def set_rank_name(self) -> Self:
-        rank = self.rank.name
-        self.rank_name = dict_rank_names[rank]
+        rank = self.get('rank').name
+        self['rank_name'] = dict_rank_names[rank]
         return self
 
 
