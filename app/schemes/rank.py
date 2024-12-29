@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field, field_validator, root_validator, model_validator
+from typing_extensions import Self
 
 dict_rank_names = {
         "stone": "Лига исследователей",
@@ -25,10 +26,10 @@ class Rank(BaseModel):
         return v.name
 
     @model_validator(mode='before')
-    def set_rank_name(cls, values):
-        rank = values.rank.name
-        values.rank_name = dict_rank_names[rank]
-        return values
+    def set_rank_name(self) -> Self:
+        rank = self.rank.name
+        self.rank_name = dict_rank_names[rank]
+        return self
 
     class Config:
         from_attributes = True
@@ -52,10 +53,11 @@ class RankInfoOut(BaseModel):
         return v.name
 
     @model_validator(mode='before')
-    def set_rank_name(cls, values):
-        rank = values.rank.name
-        values.rank_name = dict_rank_names[rank]
-        return values
+    def set_rank_name(self) -> Self:
+        rank = self.rank.name
+        self.rank_name = dict_rank_names[rank]
+        return self
+
 
 class RankOutInfo(BaseModel):
     id: int = Field(..., description='ID ранга')
@@ -69,10 +71,10 @@ class RankOutInfo(BaseModel):
         return v.name
 
     @model_validator(mode='before')
-    def set_rank_name(cls, values):
-        rank = values.rank.name
-        values.rank_name = dict_rank_names[rank]
-        return values
+    def set_rank_name(self) -> Self:
+        rank = self.rank.name
+        self.rank_name = dict_rank_names[rank]
+        return self
 
     class Config:
         from_attributes = True
