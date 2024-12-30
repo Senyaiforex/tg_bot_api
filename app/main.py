@@ -188,6 +188,7 @@ async def get_top_users(limit: int = Query(default=10, description='Количе
                    'username': user.user_name,
                    'count_coins': user.total_coins,
                    'rank': user.rank.rank.name,
+                   'rank_name': dict_rank_names[user.rank.rank.name],
                    'level': user.rank.level} for user in users]
     return JSONResponse(list_users, status_code=200)
 

@@ -7,6 +7,19 @@ from models import User, HistoryTransaction, SearchPost, Post, ChangeTransaction
 from datetime import date, timedelta
 from database import async_session
 
+dict_rank_names = {
+        "stone": "Лига исследователей",
+        "copper": "Лига Выгодных Сделок",
+        "silver": "Лига Удачных Покупок",
+        "gold": "Лига Цифровой Торговли",
+        "platinum": "Лига Лояльных покупателей",
+        "diamond": "Лига Бонусных Возможностей",
+        "sapphire": "Лига Звездных Сделок",
+        "ruby": "Лига Топ-Маркетплейсов",
+        "amethyst": "Лига Экспертов Маркетплейсов",
+        "morganite": "Лига Покупательской Славы",
+}
+
 
 class UserRepository:
     @classmethod
@@ -320,6 +333,7 @@ class UserRepository:
         :param session: Асинхронная сессия
         :return: Список друзей с их username, count_coins и level.
         """
+
         # Находим пользователя по id_telegram
         result = await session.execute(
                 select(User)
@@ -338,7 +352,8 @@ class UserRepository:
                     'count_coins': friend.count_coins,
                     'level': friend.rank.level if friend.rank else None,
                     'rank': friend.rank.rank.name if friend.rank else None,
-                    'date_registration': friend.registration_date.strftime('%d-%m-%Y')
+                    'date_registration': friend.registration_date.strftime('%d-%m-%Y'),
+                    'rank_name': dict_rank_names[friend.rank.rank.name] if friend.rank else None
             })
 
         return friends_list
@@ -513,6 +528,7 @@ class UserRepository:
         )
         users = query_users.unique().scalars().all()
         return users
+
     @classmethod
     async def get_sum_vouchers(cls, session):
         """
