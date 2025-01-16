@@ -3,7 +3,7 @@ from sqlalchemy import func
 from fastapi import HTTPException
 from sqlalchemy import select, delete
 from sqlalchemy.orm import joinedload, aliased, selectinload
-from models import User, HistoryTransaction, SearchPost, Post, ChangeTransaction
+from models import User, HistoryTransaction, SearchPost, Post, ChangeTransaction, BlackListUser
 from datetime import date, timedelta
 from database import async_session
 
@@ -542,6 +542,41 @@ class UserRepository:
         )
         voucher_sum = result.scalar()
         return voucher_sum
+
+    @classmethod
+    async def get_ban_lists_users(cls, session: async_session) -> list:
+        """
+        Получить список пользователей в бан-листе
+        :param session: Асинхронная сессия
+        :return: Список пользователей
+        :rtype: list[User]
+        """
+        result = await session.execute(
+                select(BlackListUser)
+        )
+        users = result.scalars().all()
+        return users
+
+    @classmethod
+    async def add_in_ban_lists_users(cls, username: str, session: async_session):
+        """
+        Получить список пользователей в бан-листе
+        :param session: Асинхронная сессия
+        :return: Список пользователей
+        :rtype: list[User]
+        """
+        if not username:
+            return
+        result = await session.execute(
+                select(BlackListUser)
+                .where(BlackListUser.user_name == username)
+        )
+        user = result.scalars().first()
+        if not user:
+            new_user = BlackListUser(user_name=username)
+            session.add(new_user)
+            await session.commit()
+        return user
 
 
 class SearchListRepository:

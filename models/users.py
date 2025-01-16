@@ -194,3 +194,12 @@ class SearchPost(Base):
                   index=True,
                   nullable=False)
     user_id = Column(Integer, ForeignKey('users.id'))
+
+
+class BlackListUser(Base):
+    """
+    Модель для запрета размещения постов пользователя
+    """
+    __tablename__ = 'ban_lists'
+    id = Column(Integer, primary_key=True, index=True)
+    user_name = Column(String, comment='Никнейм пользователя', unique=True, nullable=False)

@@ -316,16 +316,56 @@ async def add_post_query(callback_query: CallbackQuery, state: FSMContext) -> No
 
 
 @dp.callback_query(lambda c: c.data == 'delete_post_by_name')
-async def delete_post_by_name(callback_query: CallbackQuery, state: FSMContext) -> None:
+async def delete_my_posts(callback_query: CallbackQuery, state: FSMContext) -> None:
     """
     Функция обработки нажатия на inline-кнопку «Удалить мой пост»
     """
     await delete_menu(state, bot, callback_query.from_user.id)
+    keyboard = await menu_delete_posts()
     await message_answer_process(bot, callback_query,
-                                 state, "Отправьте ссылку на сообщение в группе с упоминанием вашего никнейма\n"
+                                 state, "Выберите действие",
+                                 keyboard)
+
+
+@dp.callback_query(lambda c: c.data == 'delete_post_my_by_name')
+async def delete_post_by_name(callback_query: CallbackQuery, state: FSMContext) -> None:
+    """
+    Функция обработки нажатия на inline-кнопку «Удалить мой пост»
+    """
+    await delete_message(bot, callback_query.from_user.id, callback_query.message.message_id)
+    await message_answer_process(bot, callback_query,
+                                 state, "Отправьте ссылку на сообщение в группе "
+                                        "с упоминанием вашего никнейма\n"
                                         "Если такое сообщение есть, то мы удалим его",
                                  back_menu_user)
     await state.set_state(DeletePost.wait_url_post)
+
+
+@dp.callback_query(lambda c: c.data == 'ban_my_posts')
+async def ban_my_posts(callback_query: CallbackQuery, state: FSMContext) -> None:
+    """
+    Функция обработки нажатия на inline-кнопку «Запретить размещение моих постов»
+    """
+    await delete_message(bot, callback_query.from_user.id, callback_query.message.message_id)
+    keyboard = await menu_ban_posts()
+    await message_answer_process(bot, callback_query,
+                                 state, "Хотите запретить размещение своих постов в нашей группе?\n"
+                                        "Нажмите да/назад",
+                                 keyboard)
+
+
+@dp.callback_query(lambda c: c.data == 'ban_posts_yes')
+async def ban_my_posts(callback_query: CallbackQuery, state: FSMContext) -> None:
+    """
+    Функция обработки нажатия на inline-кнопку «Запретить размещение моих постов»
+    """
+    await delete_message(bot, callback_query.from_user.id, callback_query.message.message_id)
+    username = callback_query.from_user.username
+    async for session in get_async_session():
+        await UserRepository.add_in_ban_lists_users(username, session)
+    await message_answer_process(bot, callback_query,
+                                 state, "Вы запретили размещение своих постов в нашей группе.",
+                                 back_menu_user)
 
 
 @dp.callback_query(lambda c: c.data == 'catalog')
@@ -1068,9 +1108,15 @@ async def again_public(callback_query: CallbackQuery, state: FSMContext) -> None
 @dp.message()
 async def handle_message(message: Message):
     if message.chat.type in ['group', 'supergroup']:
-        topic_number = message.reply_to_message.message_id if message.reply_to_message else 0
-        if topic_number == 12955 and message.photo:
-            async for session in get_async_session():
+        async for session in get_async_session():
+            topic_number = message.reply_to_message.message_id if message.reply_to_message else 0
+            black_lists = UserRepository.get_ban_lists_users(session)
+            if message.photo:
+                for ban_user in black_lists:
+                    if ban_user.user_name.lower() in message.caption.lower():
+                        await message.delete()
+                        return
+            if topic_number == 12955 and message.photo:
                 await PostRepository.increment_liquid_posts(session, {'current_free': 1})
                 date = datetime.today().date()
                 logger.info(f"Обработка нового поста во всех категориях {date.strftime('%d-%m-%Y')}")
@@ -1124,9 +1170,9 @@ async def check_task_complete(telegram_id: int, task_id: int) -> bool:
             await TaskRepository.add_task(user, task, session)
             await PullRepository.update_pull(session, task.reward, 'current_tasks')
             await user.update_count_coins(session, task.reward, 'Выполнение задания')
-                # await asyncio.gather(TaskRepository.add_task(user, task, session),
-                #                      PullRepository.update_pull(session, task.reward, 'current_tasks'),
-                #                      user.update_count_coins(session, task.reward, 'Выполнение задания'))
+            # await asyncio.gather(TaskRepository.add_task(user, task, session),
+            #                      PullRepository.update_pull(session, task.reward, 'current_tasks'),
+            #                      user.update_count_coins(session, task.reward, 'Выполнение задания'))
             return True
         else:  # Пока что возвращаем True для всех остальных задач
             await TaskRepository.add_task(user, task, session)

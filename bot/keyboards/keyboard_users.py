@@ -55,6 +55,31 @@ async def menu_sellers_keyboard():
     return keyboard
 
 
+async def menu_delete_posts():
+    """
+    Функция создаёт кнопки для меню продацов
+    :return: InlineKeyboardMarkup
+    """
+    delete_post_by_name = [InlineKeyboardButton(text='🗑 Удалить мой пост из группы',
+                                                callback_data='delete_post_my_by_name')]
+    ban_my_posts = [InlineKeyboardButton(text='🔒 Запретить размещение моих постов',
+                                                callback_data='ban_my_posts')]
+    back_but = [InlineKeyboardButton(text='⬅️ Назад', callback_data='back_to_menu')]
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[ban_my_posts, delete_post_by_name, back_but])
+    return keyboard
+
+
+async def menu_ban_posts():
+    """
+    Функция создаёт кнопки для меню продацов
+    :return: InlineKeyboardMarkup
+    """
+    delete_post_by_name = [InlineKeyboardButton(text='Да',
+                                                callback_data='ban_posts_yes')]
+    back_but = [InlineKeyboardButton(text='⬅️ Назад', callback_data='back_to_menu')]
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[delete_post_by_name, back_but])
+    return keyboard
+
 async def menu_buyers_keyboard():
     """
     Функция создаёт кнопки для меню продацов
